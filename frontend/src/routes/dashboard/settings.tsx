@@ -1,8 +1,31 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState } from 'react';
 
 // export const Route = createFileRoute('/dashboard/settings')({
+//   beforeLoad: async ({ context, location }) => {
+//     // Check if user is authenticated
+//     const token = localStorage.getItem('auth_token');
+//     if (!token) {
+//       throw redirect({
+//         to: '/',
+//         search: {
+//           redirect: location.href,
+//         },
+//       });
+//     }
+
+//     // Check if user has manager role
+//     const userJson = localStorage.getItem('auth_user');
+//     if (userJson) {
+//       const user = JSON.parse(userJson);
+//       if (user.role !== 'manager') {
+//         throw redirect({
+//           to: '/dashboard',
+//         });
+//       }
+//     }
+//   },
 //   component: SettingsPage,
 // });
 

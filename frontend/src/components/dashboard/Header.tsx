@@ -13,19 +13,43 @@ export default function Header() {
       navigate({ to: '/' });
     } catch (error) {
       console.error('Logout failed:', error);
+      // Force navigation even if logout fails
+      navigate({ to: '/' });
+    }
+  };
+
+  // Format role display
+  const getRoleDisplay = (role?: string) => {
+    if (!role) return 'User';
+    return role.charAt(0).toUpperCase() + role.slice(1);
+  };
+
+  // Get role color
+  const getRoleBadgeColor = (role?: string) => {
+    switch (role) {
+      case 'manager':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'sales':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm">
-      {/* Left side - could add breadcrumbs or search */}
+      {/* Left side */}
       <div className="flex items-center gap-4">
         <h2 className="text-xl font-semibold text-gray-800">
           Welcome back, {user?.name || 'User'}!
         </h2>
-        {import.meta.env.VITE_USE_MOCK_AUTH === 'true' && (
-          <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800 border border-yellow-200">
-            🧪 Mock Mode
+        {user?.role && (
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-medium border ${getRoleBadgeColor(
+              user.role
+            )}`}
+          >
+            {getRoleDisplay(user.role)}
           </span>
         )}
       </div>
@@ -33,8 +57,8 @@ export default function Header() {
       {/* Right side - User menu */}
       <div className="flex items-center gap-4">
         {/* Notifications */}
-        <button
-          className="relative rounded-full p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        {/*<button
+          className="relative rounded-full p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
           aria-label="Notifications"
         >
           <svg
@@ -51,20 +75,20 @@ export default function Header() {
             />
           </svg>
           <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500"></span>
-        </button>
+        </button>*/}
 
         {/* User dropdown */}
         <div className="relative">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors"
           >
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white font-medium">
-              {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="text-left hidden md:block">
               <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
-              <p className="text-xs text-gray-500">{user?.role || 'Member'}</p>
+              <p className="text-xs text-gray-500">{getRoleDisplay(user?.role)}</p>
             </div>
             <svg
               className={`h-5 w-5 text-gray-500 transition-transform ${
@@ -95,14 +119,20 @@ export default function Header() {
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
                     <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                    <p className="text-xs text-gray-400 mt-1">{getRoleDisplay(user?.role)}</p>
                   </div>
 
                   <div className="border-t border-gray-100 mt-1 pt-1">
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"

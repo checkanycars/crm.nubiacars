@@ -1,8 +1,32 @@
-import { createFileRoute, useSearch } from '@tanstack/react-router';
+import { createFileRoute, useSearch, redirect } from '@tanstack/react-router';
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 
 export const Route = createFileRoute('/dashboard/customers')({
+  beforeLoad: async ({ context, location }) => {
+    // Check if user is authenticated
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      throw redirect({
+        to: '/',
+        search: {
+          redirect: location.href,
+        },
+      });
+    }
+
+    // Check if user has manager role
+    const userJson = localStorage.getItem('auth_user');
+    if (userJson) {
+      const user = JSON.parse(userJson);
+      if (user.role !== 'manager') {
+        throw redirect({
+          to: '/dashboard',
+        });
+      }
+    }
+  },
   component: CustomersPage,
   validateSearch: (search: Record<string, unknown>) => {
     return {

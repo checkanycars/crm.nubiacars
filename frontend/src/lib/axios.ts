@@ -10,14 +10,13 @@ const axiosInstance = axios.create({
   },
 });
 
-// Request interceptor
+// Request interceptor - Add Bearer token to all requests
 axiosInstance.interceptors.request.use(
   (config) => {
-    // You can add auth token here if needed
-    // const token = localStorage.getItem('token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -25,7 +24,7 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor - Handle auth errors
 axiosInstance.interceptors.response.use(
   (response) => {
     return response;
@@ -33,13 +32,24 @@ axiosInstance.interceptors.response.use(
   (error) => {
     // Handle common errors
     if (error.response?.status === 401) {
-      // Unauthorized - redirect to login
-      window.location.href = '/';
+      // Unauthorized - clear token and redirect to login
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      
+      // Only redirect if not already on login page
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
     }
     
     if (error.response?.status === 419) {
-      // CSRF token mismatch - refresh and retry
+      // CSRF token mismatch
       console.error('CSRF token mismatch');
+    }
+
+    if (error.response?.status === 403) {
+      // Forbidden - user doesn't have permission
+      console.error('Access denied: insufficient permissions');
     }
     
     return Promise.reject(error);

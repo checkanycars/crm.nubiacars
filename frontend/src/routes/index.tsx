@@ -1,7 +1,6 @@
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useAuth, MOCK_USER, USE_MOCK_AUTH } from '../contexts/AuthContext';
-import axios from '../lib/axios';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Route = createFileRoute('/')({
   component: LoginPage,
@@ -10,17 +9,15 @@ export const Route = createFileRoute('/')({
 interface LoginForm {
   email: string;
   password: string;
-  remember: boolean;
 }
 
 type FieldErrors = Record<string, string[] | string | undefined>;
 
 function LoginPage() {
-  const { login } = useAuth();
+  const { login, isLoading: authLoading, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<LoginForm>({
     email: '',
     password: '',
-    remember: false,
   });
 
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -28,21 +25,21 @@ function LoginPage() {
   const navigate = useNavigate();
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    const newValue = type === 'checkbox' ? checked : value;
+    const { name, value } = e.target;
 
     setFormData((prev) => ({
       ...prev,
-      [name]: newValue,
+      [name]: value,
     }));
 
     // Clear the error for this field if present
-    setErrors((prev) => {
-      if (!(name in prev)) return prev;
-      const next = { ...prev };
-      delete next[name];
-      return next;
-    });
+    if (name in errors) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -51,53 +48,17 @@ function LoginPage() {
     setErrors({});
 
     try {
-      // MOCK MODE - Skip backend API calls
-      if (USE_MOCK_AUTH) {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+      // Call the login function from AuthContext
+      await login(formData.email, formData.password);
 
-        // Check credentials against mock user
-        if (formData.email === MOCK_USER.email && formData.password === 'password') {
-          login(MOCK_USER);
-          navigate({ to: "/dashboard" });
-          return;
-        } else {
-          setErrors({ general: 'Invalid credentials. Use admin@example.com / password' });
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      // REAL MODE - Connect to backend API
-      // Ensure CSRF cookie/session initialized when backend requires it
-      await axios.get('/csrf-cookie');
-
-      const response = await axios.post('/login', formData);
-
-      // Normalized success check: server may return success flag or HTTP 200 with user
-      const data = response?.data;
-      if (data?.success === true || data?.user) {
-        // Update auth context with user data
-        login(data.user);
-        // Navigate to dashboard on successful login
-        navigate({ to: '/dashboard' });
-        return;
-      }
-
-      // If server returned a structured error message
-      if (data?.message) {
-        setErrors({ general: data.message });
-        return;
-      }
-
-      // Fallback generic error
-      setErrors({ general: 'Login failed. Please try again.' });
+      // Navigate to dashboard on successful login
+      navigate({ to: '/dashboard' });
     } catch (err: any) {
       const status = err?.response?.status;
       const respData = err?.response?.data;
 
       if (status === 422 && respData?.errors) {
-        // Validation errors expected in { errors: { field: [msg] } } shape
+        // Laravel validation errors
         setErrors(respData.errors);
       } else if (respData?.message) {
         setErrors({ general: respData.message });
@@ -118,13 +79,51 @@ function LoginPage() {
     return String(err);
   };
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      navigate({ to: '/dashboard' });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
+  // Show loading state while checking auth or redirecting
+  if (authLoading || isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <svg className="animate-spin h-8 w-8 text-blue-600 mx-auto" viewBox="0 0 24 24">
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+              fill="none"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          <p className="mt-4 text-sm text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">CRM Nubia Cars</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">Sign in to access your dashboard</p>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            CRM Nubia Cars
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Sign in to access your dashboard
+          </p>
         </div>
 
         {/* Login Form */}
@@ -151,9 +150,12 @@ function LoginPage() {
                   value={formData.email}
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="your@email.com"
                 />
               </div>
-              {errors.email && <p className="mt-2 text-sm text-red-600">{renderFieldError('email')}</p>}
+              {errors.email && (
+                <p className="mt-2 text-sm text-red-600">{renderFieldError('email')}</p>
+              )}
             </div>
 
             {/* Password */}
@@ -171,24 +173,12 @@ function LoginPage() {
                   value={formData.password}
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="••••••••"
                 />
               </div>
-              {errors.password && <p className="mt-2 text-sm text-red-600">{renderFieldError('password')}</p>}
-            </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center">
-              <input
-                id="remember"
-                name="remember"
-                type="checkbox"
-                checked={formData.remember}
-                onChange={handleChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
+              {errors.password && (
+                <p className="mt-2 text-sm text-red-600">{renderFieldError('password')}</p>
+              )}
             </div>
 
             {/* Submit Button */}
@@ -196,25 +186,49 @@ function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Signing in...
+                  </span>
+                ) : (
+                  'Sign in'
+                )}
               </button>
             </div>
           </form>
 
-          {/* Default Credentials Info */}
+          {/* Test Credentials Info */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-xs text-blue-800 font-medium">
-              {USE_MOCK_AUTH ? 'Mock Mode - Test Credentials:' : 'Default Credentials:'}
-            </p>
-            <p className="text-xs text-blue-700 mt-1">Email: admin@example.com</p>
-            <p className="text-xs text-blue-700">Password: password</p>
-            {USE_MOCK_AUTH && (
-              <p className="text-xs text-blue-600 mt-2 font-medium">
-                ⚠️ Running in mock mode - no backend required
+            <p className="text-xs text-blue-800 font-medium mb-2">Test Credentials:</p>
+            <div className="space-y-1">
+              <p className="text-xs text-blue-700">
+                <strong>Manager:</strong> manager@example.com / password
               </p>
-            )}
+              <p className="text-xs text-blue-700">
+                <strong>Sales 1:</strong> sales1@example.com / password
+              </p>
+              <p className="text-xs text-blue-700">
+                <strong>Sales 2:</strong> sales2@example.com / password
+              </p>
+            </div>
           </div>
         </div>
       </div>
