@@ -19,7 +19,7 @@ export default function Sidebar() {
     { name: 'Leads', path: '/dashboard/leads', icon: '🎯', allowedRoles: ['manager', 'sales'] },
     { name: 'Customers', path: '/dashboard/customers', icon: '👥', allowedRoles: ['manager'] },
     // { name: 'Reports', path: '/dashboard/reports', icon: '📈', allowedRoles: ['manager'] },
-    // { name: 'User Management', path: '/dashboard/users', icon: '👤', allowedRoles: ['manager'] },
+    { name: 'User Management', path: '/dashboard/users', icon: '👤', allowedRoles: ['manager'] },
     // { name: 'Settings', path: '/dashboard/settings', icon: '⚙️', allowedRoles: ['manager'] },
   ];
 

@@ -3,32 +3,32 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 
-// export const Route = createFileRoute('/dashboard/users')({
-//   beforeLoad: async ({ context, location }) => {
-//     // Check if user is authenticated
-//     const token = localStorage.getItem('auth_token');
-//     if (!token) {
-//       throw redirect({
-//         to: '/',
-//         search: {
-//           redirect: location.href,
-//         },
-//       });
-//     }
+export const Route = createFileRoute('/dashboard/users')({
+  beforeLoad: async ({ context, location }) => {
+    // Check if user is authenticated
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      throw redirect({
+        to: '/',
+        search: {
+          redirect: location.href,
+        },
+      });
+    }
 
-//     // Check if user has manager role
-//     const userJson = localStorage.getItem('auth_user');
-//     if (userJson) {
-//       const user = JSON.parse(userJson);
-//       if (user.role !== 'manager') {
-//         throw redirect({
-//           to: '/dashboard',
-//         });
-//       }
-//     }
-//   },
-//   component: UsersPage,
-// });
+    // Check if user has manager role
+    const userJson = localStorage.getItem('auth_user');
+    if (userJson) {
+      const user = JSON.parse(userJson);
+      if (user.role !== 'manager') {
+        throw redirect({
+          to: '/dashboard',
+        });
+      }
+    }
+  },
+  component: UsersPage,
+});
 
 function UsersPage() {
   const { user } = useAuth();

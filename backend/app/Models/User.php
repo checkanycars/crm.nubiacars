@@ -64,4 +64,12 @@ class User extends Authenticatable
     {
         return $this->role === $role;
     }
+
+    /**
+     * Get the leads assigned to this user.
+     */
+    public function assignedLeads(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Lead::class, 'assigned_to');
+    }
 }
