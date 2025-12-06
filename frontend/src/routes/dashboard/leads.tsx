@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { leadsService, type Lead, type CreateLeadData, type UpdateLeadData } from '../../services/leadsService';
 import { CarBrandSelect } from '@/components/ui/car-brand-select';
 import { CarModelSelect } from '@/components/ui/car-model-select';
+import { carBrandsService } from '../../services/carBrandsService';
+import { carModelsService } from '../../services/carModelsService';
 
 export const Route = createFileRoute('/dashboard/leads')({
   component: LeadsKanbanPage,
@@ -30,9 +32,12 @@ function LeadsKanbanPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [assignedFilter, setAssignedFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [pendingLeadMove, setPendingLeadMove] = useState<{ lead: Lead; newStatus: LeadStatus } | null>(null);
   const [notConvertedReason, setNotConvertedReason] = useState('');
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
   // Fetch leads from API
   const fetchLeads = async () => {
@@ -110,7 +115,7 @@ function LeadsKanbanPage() {
     source: 'Website',
     priority: 'medium' as 'high' | 'medium' | 'low',
     notes: '',
-    assignedTo: undefined,
+    assignedTo: undefined as number | undefined,
   });
 
   const columns: { id: LeadStatus; title: string; color: string; bgColor: string }[] = [
@@ -263,6 +268,129 @@ function LeadsKanbanPage() {
       carModelId: modelId ? Number(modelId) : undefined,
       model: modelName || '',
     }));
+  };
+
+  // Handle edit lead
+  const handleEditLead = async (lead: Lead) => {
+    setEditingLead(lead);
+    
+    // Try to look up brand and model IDs from the database
+    let brandId: number | undefined = undefined;
+    let brandName = '';
+    let companyName = '';
+    let modelId: number | undefined = undefined;
+    let modelName = '';
+
+    try {
+      // Look up brand by name
+      if (lead.carCompany) {
+        const brands = await carBrandsService.searchBrands(lead.carCompany, 10);
+        const matchingBrand = brands.find(
+          b => b.name.toLowerCase() === lead.carCompany.toLowerCase()
+        );
+        if (matchingBrand) {
+          brandId = matchingBrand.id;
+          brandName = matchingBrand.name;
+          companyName = matchingBrand.name;
+
+          // Look up model by name (filtered by brand)
+          if (lead.model) {
+            const models = await carModelsService.searchModels(lead.model, matchingBrand.id, 10);
+            const matchingModel = models.find(
+              m => m.model_name.toLowerCase() === lead.model.toLowerCase()
+            );
+            if (matchingModel) {
+              modelId = matchingModel.id;
+              modelName = matchingModel.model_name;
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to look up brand/model IDs:', error);
+      // Continue with undefined IDs if lookup fails
+    }
+
+    setFormData({
+      leadName: lead.leadName,
+      contactName: lead.contactName,
+      email: lead.email,
+      phone: lead.phone,
+      carBrandId: brandId,
+      carBrand: brandName || lead.carCompany,
+      carCompany: companyName || lead.carCompany,
+      carModelId: modelId,
+      model: modelName || lead.model,
+      trim: lead.trim || '',
+      spec: lead.spec || '',
+      modelYear: lead.modelYear,
+      kilometers: lead.kilometers,
+      price: lead.price,
+      source: lead.source,
+      priority: lead.priority,
+      notes: lead.notes || '',
+      assignedTo: lead.assignedTo,
+    });
+    setShowEditModal(true);
+    setOpenDropdownId(null);
+  };
+
+  // Handle update lead
+  const handleUpdateLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLead) return;
+
+    try {
+      const updateData: UpdateLeadData = {
+        leadName: formData.leadName,
+        contactName: formData.contactName,
+        email: formData.email,
+        phone: formData.phone,
+        source: formData.source,
+        carCompany: formData.carBrand || formData.carCompany,
+        model: formData.model,
+        trim: formData.trim,
+        spec: formData.spec,
+        modelYear: formData.modelYear,
+        kilometers: formData.kilometers,
+        price: formData.price,
+        priority: formData.priority,
+        notes: formData.notes,
+        assignedTo: formData.assignedTo,
+      };
+
+      const updatedLead = await leadsService.updateLead(editingLead.id, updateData);
+      setLeads((prevLeads) =>
+        prevLeads.map((lead) => (lead.id === editingLead.id ? updatedLead : lead))
+      );
+      setShowEditModal(false);
+      setEditingLead(null);
+      
+      // Reset form
+      setFormData({
+        leadName: '',
+        contactName: '',
+        email: '',
+        phone: '',
+        carBrandId: undefined,
+        carBrand: '',
+        carCompany: '',
+        carModelId: undefined,
+        model: '',
+        trim: '',
+        spec: '',
+        modelYear: new Date().getFullYear(),
+        kilometers: 0,
+        price: 0,
+        source: 'Website',
+        priority: 'medium',
+        notes: '',
+        assignedTo: undefined,
+      });
+    } catch (err: any) {
+      console.error('Failed to update lead:', err);
+      alert(err?.response?.data?.message || 'Failed to update lead');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -513,16 +641,54 @@ function LeadsKanbanPage() {
                         <span className="text-xs text-gray-500 capitalize">{lead.priority} Priority</span>
                       </div>
                       {hasRole('manager') && (
-                        <button className="text-gray-400 hover:text-gray-600">
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                            />
-                          </svg>
-                        </button>
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(openDropdownId === lead.id ? null : lead.id);
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                              />
+                            </svg>
+                          </button>
+
+                          {/* Dropdown Menu */}
+                          {openDropdownId === lead.id && (
+                            <>
+                              {/* Backdrop to close dropdown */}
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setOpenDropdownId(null)}
+                              />
+
+                              {/* Dropdown Content */}
+                              <div className="absolute right-0 top-6 z-20 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+                                <div className="py-1" role="menu">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditLead(lead);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    role="menuitem"
+                                  >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    Edit Lead
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -967,6 +1133,349 @@ function LeadsKanbanPage() {
                 >
                   Add Lead
                 </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lead Modal */}
+      {showEditModal && editingLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">Edit Lead</h3>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingLead(null);
+                  }}
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateLead} className="p-6 space-y-6">
+              {/* Lead Information Section */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Lead Information
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="edit-leadName" className="block text-sm font-medium text-gray-700 mb-1">
+                      Lead Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-leadName"
+                      name="leadName"
+                      value={formData.leadName}
+                      onChange={handleFormChange}
+                      required
+                      placeholder="e.g., Lead-2024-008"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-contactName" className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-contactName"
+                      name="contactName"
+                      value={formData.contactName}
+                      onChange={handleFormChange}
+                      required
+                      placeholder="e.g., John Doe"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Channels Section */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Contact Channels
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700 mb-1">
+                      Email Address <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      id="edit-email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleFormChange}
+                      required
+                      placeholder="john.doe@example.com"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      id="edit-phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleFormChange}
+                      required
+                      placeholder="+1 234-567-8900"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Vehicle Details Section */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                  </svg>
+                  Vehicle Details
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="edit-carBrandId" className="block text-sm font-medium text-gray-700 mb-1">
+                      Car Brand <span className="text-red-500">*</span>
+                    </label>
+                    <CarBrandSelect
+                      id="edit-carBrandId"
+                      name="carBrandId"
+                      value={formData.carBrandId}
+                      onChange={handleBrandChange}
+                      placeholder="Search and select car brand..."
+                      required
+                      className="w-full"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Type to search (e.g., "toy" for Toyota)
+                    </p>
+                  </div>
+                  <div>
+                    <label htmlFor="edit-carModelId" className="block text-sm font-medium text-gray-700 mb-1">
+                      Model <span className="text-red-500">*</span>
+                    </label>
+                    <CarModelSelect
+                      id="edit-carModelId"
+                      name="carModelId"
+                      value={formData.carModelId}
+                      brandId={formData.carBrandId}
+                      onChange={handleModelChange}
+                      placeholder="Search and select car model..."
+                      required
+                      className="w-full"
+                    />
+                    {!formData.carBrandId ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Please select a brand first
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Models from {formData.carBrand} only
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label htmlFor="edit-trim" className="block text-sm font-medium text-gray-700 mb-1">
+                      Trim
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-trim"
+                      name="trim"
+                      value={formData.trim}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Sport, Limited, Premium"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-spec" className="block text-sm font-medium text-gray-700 mb-1">
+                      Spec
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-spec"
+                      name="spec"
+                      value={formData.spec}
+                      onChange={handleFormChange}
+                      placeholder="e.g., GCC, American, European"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-modelYear" className="block text-sm font-medium text-gray-700 mb-1">
+                      Model Year <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      id="edit-modelYear"
+                      name="modelYear"
+                      value={formData.modelYear}
+                      onChange={handleFormChange}
+                      required
+                      min="1900"
+                      max={new Date().getFullYear() + 1}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-kilometers" className="block text-sm font-medium text-gray-700 mb-1">
+                      Kilometers <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      id="edit-kilometers"
+                      name="kilometers"
+                      value={formData.kilometers}
+                      onChange={handleFormChange}
+                      required
+                      min="0"
+                      placeholder="e.g., 15000"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="edit-price" className="block text-sm font-medium text-gray-700 mb-1">
+                      Price ($) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      id="edit-price"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleFormChange}
+                      required
+                      min="0"
+                      step="100"
+                      placeholder="e.g., 25000"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Details Section */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Additional Details
+                </h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="edit-source" className="block text-sm font-medium text-gray-700 mb-1">
+                      Source <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="edit-source"
+                      name="source"
+                      value={formData.source}
+                      onChange={handleFormChange}
+                      required
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="Website">Website</option>
+                      <option value="Phone Call">Phone Call</option>
+                      <option value="Walk-in">Walk-in</option>
+                      <option value="Referral">Referral</option>
+                      <option value="Email">Email</option>
+                      <option value="Social Media">Social Media</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="edit-priority" className="block text-sm font-medium text-gray-700 mb-1">
+                      Priority <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="edit-priority"
+                      name="priority"
+                      value={formData.priority}
+                      onChange={handleFormChange}
+                      required
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="edit-assignedTo" className="block text-sm font-medium text-gray-700 mb-1">
+                      Assign To <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="edit-assignedTo"
+                      name="assignedTo"
+                      value={formData.assignedTo}
+                      onChange={handleFormChange}
+                      required
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Select sales person...</option>
+                      {salesUsers.map(user => (
+                        <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="edit-notes" className="block text-sm font-medium text-gray-700 mb-1">
+                      Notes
+                    </label>
+                    <textarea
+                      id="edit-notes"
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleFormChange}
+                      rows={4}
+                      placeholder="Add any additional notes about this lead..."
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 transition-colors"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingLead(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                >
+                  Update Lead
+                </button>
               </div>
             </form>
           </div>
