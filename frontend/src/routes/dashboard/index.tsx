@@ -1,15 +1,76 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { leadsService } from '../../services/leadsService';
+import { customersService } from '../../services/customersService';
 
 export const Route = createFileRoute('/dashboard/')({
   component: DashboardIndexPage,
 });
 
+interface DashboardStats {
+  totalCustomers: number;
+  activeLeads: number;
+  convertedLeads: number;
+  notConvertedLeads: number;
+  conversionRate: number;
+}
+
 function DashboardIndexPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalCustomers: 0,
+    activeLeads: 0,
+    convertedLeads: 0,
+    notConvertedLeads: 0,
+    conversionRate: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch dashboard statistics
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Fetch customers and leads statistics in parallel
+        const [customersResponse, leadsStats] = await Promise.all([
+          customersService.getCustomers({ per_page: 1 }), // Just get count
+          leadsService.getStatistics(),
+        ]);
+
+
+        // Laravel pagination may return data in meta object
+        const totalCustomers = customersResponse?.total ||
+                               customersResponse?.meta?.total ||
+                               (customersResponse as any)?.data?.total || 0;
+
+        // Calculate conversion rate
+        const total = leadsStats.total;
+        const conversionRate = total > 0 ? Math.round((leadsStats.converted / total) * 100) : 0;
+
+
+        setStats({
+          totalCustomers,
+          activeLeads: leadsStats?.new || 0,
+          convertedLeads: leadsStats?.converted || 0,
+          notConvertedLeads: leadsStats?.not_converted || 0,
+          conversionRate,
+        });
+      } catch (err: any) {
+        console.error('Failed to fetch dashboard stats:', err);
+        setError(err?.response?.data?.message || 'Failed to load dashboard statistics');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
 
   const handleAddCustomer = () => {
     navigate({
@@ -25,58 +86,18 @@ function DashboardIndexPage() {
     });
   };
 
-  const stats = [
+  const statsCards = [
     {
       name: 'Total Customers',
-      value: '1,234',
-      change: '+12%',
-      changeType: 'positive',
+      value: isLoading ? '...' : (stats.totalCustomers || 0).toLocaleString(),
       icon: '👥',
     },
     {
       name: 'Active Leads',
-      value: '456',
-      change: '+8%',
-      changeType: 'positive',
+      value: isLoading ? '...' : (stats.activeLeads || 0).toLocaleString(),
       icon: '🎯',
     },
-    // {
-    //   name: 'Monthly Sales',
-    //   value: 'AED 89,23',
-    //   change: '+23%',
-    //   changeType: 'positive',
-    //   icon: '💰',
-    // },
-    // {
-    //   name: 'Vehicles Sold',
-    //   value: '67',
-    //   change: '-4%',
-    //   changeType: 'negative',
-    //   icon: '🚗',
-    // },
   ];
-
-  // Mock leads data - would come from API in production
-  const leads = useMemo(() => [
-    { id: 1, name: 'Sarah Miller', status: 'new', createdAt: '2024-01-16' },
-    { id: 2, name: 'Michael Davis', status: 'new', createdAt: '2024-01-15' },
-    { id: 3, name: 'Emily Wilson', status: 'new', createdAt: '2024-01-12' },
-    { id: 4, name: 'David Martinez', status: 'converted', createdAt: '2024-01-14' },
-    { id: 5, name: 'Lisa Anderson', status: 'converted', createdAt: '2024-01-10' },
-    { id: 6, name: 'Robert Taylor', status: 'not_converted', createdAt: '2024-01-08' },
-    { id: 7, name: 'Jennifer White', status: 'not_converted', createdAt: '2024-01-05' },
-  ], []);
-
-  const leadsStats = useMemo(() => {
-    const total = leads.length;
-    const converted = leads.filter(l => l.status === 'converted').length;
-    const notConverted = leads.filter(l => l.status === 'not_converted').length;
-    const newLeads = leads.filter(l => l.status === 'new').length;
-    const conversionRate = total > 0 ? Math.round((converted / total) * 100) : 0;
-
-    return { total, converted, notConverted, newLeads, conversionRate };
-  }, [leads]);
-
 
   return (
     <div className="space-y-6">
@@ -88,9 +109,25 @@ function DashboardIndexPage() {
         </p>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+          <div className="flex">
+            <div className="shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
-        {stats.map((stat) => (
+        {statsCards.map((stat) => (
           <div
             key={stat.name}
             className="overflow-hidden rounded-lg bg-white px-6 py-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
@@ -107,15 +144,6 @@ function DashboardIndexPage() {
                   <div className="text-2xl font-semibold text-gray-900">
                     {stat.value}
                   </div>
-                  <div
-                    className={`ml-2 flex items-baseline text-sm font-semibold ${
-                      stat.changeType === 'positive'
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {stat.change}
-                  </div>
                 </dd>
               </div>
             </div>
@@ -125,8 +153,6 @@ function DashboardIndexPage() {
 
       {/* Two column layout */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Activity */}
-
         {/* Leads Overview */}
         <div className="rounded-lg bg-white shadow-sm border border-gray-200">
           <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -143,57 +169,68 @@ function DashboardIndexPage() {
             </Button>
           </div>
           <div className="p-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* New Leads */}
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-                  <span className="text-xl">🆕</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">New Leads</p>
-                  <p className="text-2xl font-bold text-blue-600">{leadsStats.newLeads}</p>
-                </div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-gray-500">Loading statistics...</div>
               </div>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* New Leads */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+                      <span className="text-xl">🆕</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">New Leads</p>
+                      <p className="text-2xl font-bold text-blue-600">{stats.activeLeads || 0}</p>
+                    </div>
+                  </div>
 
-              {/* Converted */}
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                  <span className="text-xl">✅</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Converted</p>
-                  <p className="text-2xl font-bold text-green-600">{leadsStats.converted}</p>
-                </div>
-              </div>
+                  {/* Converted */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                      <span className="text-xl">✅</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Converted</p>
+                      <p className="text-2xl font-bold text-green-600">{stats.convertedLeads || 0}</p>
+                    </div>
+                  </div>
 
-              {/* Not Converted */}
-              <div className="flex items-center gap-4 sm:col-span-2">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                  <span className="text-xl">❌</span>
+                  {/* Not Converted */}
+                  <div className="flex items-center gap-4 sm:col-span-2">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                      <span className="text-xl">❌</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Not Converted</p>
+                      <p className="text-2xl font-bold text-red-600">{stats.notConvertedLeads || 0}</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Not Converted</p>
-                  <p className="text-2xl font-bold text-red-600">{leadsStats.notConverted}</p>
-                </div>
-              </div>
-            </div>
 
-            {/* Conversion Rate Progress Bar */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Conversion Rate</span>
-                <span className="text-sm font-semibold text-gray-900">{leadsStats.conversionRate}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${leadsStats.conversionRate}%` }}
-                ></div>
-              </div>
-              <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                <span>{leadsStats.converted} converted out of {leadsStats.total} total leads</span>
-              </div>
-            </div>
+                {/* Conversion Rate Progress Bar */}
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Conversion Rate</span>
+                    <span className="text-sm font-semibold text-gray-900">{stats.conversionRate || 0}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div
+                      className="bg-linear-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500"
+                      style={{ width: `${stats.conversionRate || 0}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                    <span>
+                      {stats.convertedLeads || 0} converted out of{' '}
+                      {(stats.activeLeads || 0) + (stats.convertedLeads || 0) + (stats.notConvertedLeads || 0)} total leads
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -252,65 +289,9 @@ function DashboardIndexPage() {
                 />
               </svg>
             </Button>
-
-            {/*<button className="w-full flex items-center justify-between rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 text-left hover:border-blue-500 hover:bg-blue-50 transition-colors">
-              <span className="flex items-center gap-3">
-                <span className="text-2xl">🚗</span>
-                <span className="font-medium text-gray-900">Add Vehicle</span>
-              </span>
-              <svg
-                className="h-5 w-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
-
-            <button className="w-full flex items-center justify-between rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 text-left hover:border-blue-500 hover:bg-blue-50 transition-colors">
-              <span className="flex items-center gap-3">
-                <span className="text-2xl">📊</span>
-                <span className="font-medium text-gray-900">View Reports</span>
-              </span>
-              <svg
-                className="h-5 w-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>*/}
           </div>
         </div>
       </div>
-
-
-      {/* Additional Info Section */}
-      {/*<div className="rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 p-6 shadow-lg text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">Need help getting started?</h3>
-            <p className="mt-1 text-sm text-blue-100">
-              Check out our documentation and tutorials to make the most of your CRM.
-            </p>
-          </div>
-          <button className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors">
-            Learn More
-          </button>
-        </div>
-      </div>*/}
     </div>
   );
 }

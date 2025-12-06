@@ -792,7 +792,15 @@ function LeadsKanbanPage() {
                       <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                         <span className="font-medium">Source:</span> {lead.source}
                       </span>
-                      <span className="text-xs text-gray-400">{lead.createdAt}</span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(lead.createdAt).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
                     </div>
                   </div>
                 ))

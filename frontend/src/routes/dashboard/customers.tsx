@@ -1,65 +1,40 @@
-import { createFileRoute, useSearch, redirect } from '@tanstack/react-router';
-import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
-import { Button } from '@/components/ui/button';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { createFileRoute } from '@tanstack/react-router';
+import { useState, useEffect } from 'react';
+import {
+  customersService,
+  type Customer,
+  type CreateCustomerData,
+  type UpdateCustomerData,
+} from '../../services/customersService';
 
+// Route definition
 export const Route = createFileRoute('/dashboard/customers')({
-  beforeLoad: async ({ context, location }) => {
-    // Check if user is authenticated
+  beforeLoad: async () => {
+    // Check authentication
     const token = localStorage.getItem('auth_token');
     if (!token) {
-      throw redirect({
-        to: '/',
-        search: {
-          redirect: location.href,
-        },
-      });
-    }
-
-    // Check if user has manager role
-    const userJson = localStorage.getItem('auth_user');
-    if (userJson) {
-      const user = JSON.parse(userJson);
-      if (user.role !== 'manager') {
-        throw redirect({
-          to: '/dashboard',
-        });
-      }
+      throw new Error('Unauthorized');
+      // This will be caught by the router and redirect to login
     }
   },
   component: CustomersPage,
   validateSearch: (search: Record<string, unknown>) => {
     return {
-      action: search.action as string | undefined,
+      action: (search.action as string) || undefined,
     };
   },
 });
 
-interface Customer {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  status: 'active' | 'inactive' | 'lead';
-  totalPurchases: number;
-  lastContact: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  company?: string;
-  notes?: string;
-  createdAt: string;
-}
-
 function CustomersPage() {
-  const searchParams = useSearch({ from: '/dashboard/customers' });
+  const searchParams = Route.useSearch();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Auto-open modal when navigated with action=add parameter
   useEffect(() => {
@@ -67,99 +42,43 @@ function CustomersPage() {
       setShowAddModal(true);
     }
   }, [searchParams.action]);
+
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
     email: '',
     phone: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    company: '',
     status: 'lead' as 'active' | 'inactive' | 'lead',
     notes: '',
   });
 
-  // Mock data - replace with API call
-  const [customers, setCustomers] = useState<Customer[]>([
-    {
-      id: 1,
-      name: 'John Smith',
-      email: 'john.smith@example.com',
-      phone: '+1 234-567-8901',
-      status: 'active',
-      totalPurchases: 2,
-      lastContact: '2024-01-15',
-      address: '123 Main St',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      company: 'Acme Corp',
-      notes: 'VIP customer',
-      createdAt: '2023-06-10',
-    },
-    {
-      id: 2,
-      name: 'Jane Doe',
-      email: 'jane.doe@example.com',
-      phone: '+1 234-567-8902',
-      status: 'active',
-      totalPurchases: 1,
-      lastContact: '2024-01-14',
-      address: '456 Oak Ave',
-      city: 'Los Angeles',
-      state: 'CA',
-      zipCode: '90001',
-      createdAt: '2023-08-22',
-    },
-    {
-      id: 3,
-      name: 'Bob Johnson',
-      email: 'bob.johnson@example.com',
-      phone: '+1 234-567-8903',
-      status: 'lead',
-      totalPurchases: 0,
-      lastContact: '2024-01-13',
-      address: '789 Pine Rd',
-      city: 'Chicago',
-      state: 'IL',
-      zipCode: '60601',
-      company: 'Johnson Industries',
-      createdAt: '2024-01-10',
-    },
-    {
-      id: 4,
-      name: 'Alice Williams',
-      email: 'alice.williams@example.com',
-      phone: '+1 234-567-8904',
-      status: 'inactive',
-      totalPurchases: 3,
-      lastContact: '2023-12-20',
-      address: '321 Elm St',
-      city: 'Houston',
-      state: 'TX',
-      zipCode: '77001',
-      notes: 'Moved to another state',
-      createdAt: '2022-03-15',
-    },
-    {
-      id: 5,
-      name: 'Charlie Brown',
-      email: 'charlie.brown@example.com',
-      phone: '+1 234-567-8905',
-      status: 'active',
-      totalPurchases: 1,
-      lastContact: '2024-01-12',
-      company: 'Brown & Associates',
-      createdAt: '2023-11-05',
-    },
-  ]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  // Fetch customers on component mount
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await customersService.getCustomers({
+        per_page: 100, // Get all customers for now
+      });
+      setCustomers(response.data);
+    } catch (err: any) {
+      console.error('Error fetching customers:', err);
+      setError(err.response?.data?.message || 'Failed to fetch customers');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch =
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone.includes(searchTerm);
+      customer.phone.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || customer.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -170,10 +89,12 @@ function CustomersPage() {
       inactive: 'bg-gray-100 text-gray-800',
       lead: 'bg-blue-100 text-blue-800',
     };
-    return styles[status as keyof typeof styles] || styles.active;
+    return styles[status as keyof typeof styles] || styles.lead;
   };
 
-  const handleFormChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -181,42 +102,44 @@ function CustomersPage() {
     }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (showEditModal && selectedCustomer) {
-      // Update existing customer
-      setCustomers(customers.map(c =>
-        c.id === selectedCustomer.id
-          ? { ...c, ...formData, lastContact: new Date().toISOString().split('T')[0] }
-          : c
-      ));
-      setShowEditModal(false);
-      setSelectedCustomer(null);
-    } else {
-      // Add new customer
-      const newCustomer: Customer = {
-        id: Math.max(...customers.map(c => c.id), 0) + 1,
-        ...formData,
-        totalPurchases: 0,
-        lastContact: new Date().toISOString().split('T')[0],
-        createdAt: new Date().toISOString().split('T')[0],
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const customerData: CreateCustomerData = {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        status: formData.status,
+        notes: formData.notes,
       };
-      setCustomers([newCustomer, ...customers]);
+
+      const newCustomer = await customersService.createCustomer(customerData);
+      
+      // Add to local state
+      setCustomers((prev) => [newCustomer, ...prev]);
+      
+      // Reset form and close modal
+      setFormData({
+        fullName: '',
+        email: '',
+        phone: '',
+        status: 'lead',
+        notes: '',
+      });
       setShowAddModal(false);
+      
+      // Show success message (you can use a toast notification library)
+      alert('Customer created successfully!');
+    } catch (err: any) {
+      console.error('Error creating customer:', err);
+      setError(err.response?.data?.message || 'Failed to create customer');
+      alert(err.response?.data?.message || 'Failed to create customer');
+    } finally {
+      setIsLoading(false);
     }
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      company: '',
-      status: 'lead',
-      notes: '',
-    });
   };
 
   const handleView = (customer: Customer) => {
@@ -227,18 +150,74 @@ function CustomersPage() {
   const handleEdit = (customer: Customer) => {
     setSelectedCustomer(customer);
     setFormData({
-      name: customer.name,
+      fullName: customer.fullName,
       email: customer.email,
       phone: customer.phone,
-      address: customer.address || '',
-      city: customer.city || '',
-      state: customer.state || '',
-      zipCode: customer.zipCode || '',
-      company: customer.company || '',
       status: customer.status,
       notes: customer.notes || '',
     });
     setShowEditModal(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomer) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const updateData: UpdateCustomerData = {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        status: formData.status,
+        notes: formData.notes,
+      };
+
+      const updatedCustomer = await customersService.updateCustomer(
+        selectedCustomer.id,
+        updateData
+      );
+
+      // Update local state
+      setCustomers((prev) =>
+        prev.map((c) => (c.id === updatedCustomer.id ? updatedCustomer : c))
+      );
+
+      // Reset and close
+      handleCloseModals();
+      alert('Customer updated successfully!');
+    } catch (err: any) {
+      console.error('Error updating customer:', err);
+      setError(err.response?.data?.message || 'Failed to update customer');
+      alert(err.response?.data?.message || 'Failed to update customer');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this customer?')) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      await customersService.deleteCustomer(id);
+      
+      // Remove from local state
+      setCustomers((prev) => prev.filter((c) => c.id !== id));
+      
+      alert('Customer deleted successfully!');
+    } catch (err: any) {
+      console.error('Error deleting customer:', err);
+      setError(err.response?.data?.message || 'Failed to delete customer');
+      alert(err.response?.data?.message || 'Failed to delete customer');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCloseModals = () => {
@@ -247,94 +226,67 @@ function CustomersPage() {
     setShowEditModal(false);
     setSelectedCustomer(null);
     setFormData({
-      name: '',
+      fullName: '',
       email: '',
       phone: '',
-      address: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      company: '',
       status: 'lead',
       notes: '',
     });
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage your customer relationships and contact information
-            {import.meta.env.VITE_USE_MOCK_AUTH === 'true' && (
-              <span className="ml-2 text-blue-600 font-medium">(Mock Data)</span>
-            )}
-          </p>
-        </div>
-        <Button
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-          onClick={() => setShowAddModal(true)}>
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Customer
-        </Button>
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+        <p className="text-gray-600">Manage your customer database</p>
       </div>
 
-      {/* Filters and Search */}
-      <div className="rounded-lg bg-white shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <svg
-                className="h-5 w-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search customers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Status Filter */}
-          <div className="flex items-center gap-2">
-            <label htmlFor="status" className="text-sm font-medium text-gray-700">
-              Status:
-            </label>
-            <select
-              id="status"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="lead">Lead</option>
-            </select>
-          </div>
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800">{error}</p>
         </div>
+      )}
+
+      {/* Filters and Search */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Search customers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="lead">Lead</option>
+        </select>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Add Customer
+        </button>
       </div>
 
       {/* Customers Table */}
-      <div className="rounded-lg bg-white shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+      {isLoading && customers.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500">Loading customers...</p>
+        </div>
+      ) : filteredCustomers.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500">No customers found</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -342,492 +294,359 @@ function CustomersPage() {
                   Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
+                  Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Phone
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Purchases
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Contact
+                  Created
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredCustomers.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
-                    No customers found. Try adjusting your search or filters.
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredCustomers.map((customer) => (
+                <tr key={customer.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{customer.fullName}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{customer.email}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{customer.phone}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(
+                        customer.status
+                      )}`}
+                    >
+                      {customer.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(customer.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => handleView(customer)}
+                      className="text-blue-600 hover:text-blue-900 mr-4"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => handleEdit(customer)}
+                      className="text-indigo-600 hover:text-indigo-900 mr-4"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(customer.id)}
+                      className="text-red-600 hover:text-red-900"
+                      disabled={isLoading}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-medium">
-                          {customer.name.charAt(0)}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{customer.email}</div>
-                      <div className="text-sm text-gray-500">{customer.phone}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusBadge(
-                          customer.status
-                        )}`}
-                      >
-                        {customer.status.charAt(0).toUpperCase() + customer.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {customer.totalPurchases}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {customer.lastContact}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleView(customer)}
-                        className="text-blue-600 hover:text-blue-900 mr-2"
-                      >
-                        View
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(customer)}
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        Edit
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
-        {filteredCustomers.length > 0 && (
-          <div className="border-t border-gray-200 bg-white px-4 py-3 flex items-center justify-between sm:px-6">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Previous
-              </button>
-              <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">1</span> to{' '}
-                  <span className="font-medium">{filteredCustomers.length}</span> of{' '}
-                  <span className="font-medium">{filteredCustomers.length}</span> results
-                </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                  <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                    Previous
-                  </button>
-                  <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                    1
-                  </button>
-                  <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                    Next
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* View Customer Modal */}
-      {showViewModal && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">Customer Details</h3>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleCloseModals}
-                >
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </Button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Personal Information */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Personal Information
-                </h4>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Full Name</label>
-                    <p className="text-sm text-gray-900">{selectedCustomer.name}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusBadge(selectedCustomer.status)}`}>
-                      {selectedCustomer.status.charAt(0).toUpperCase() + selectedCustomer.status.slice(1)}
-                    </span>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Email Address</label>
-                    <p className="text-sm text-gray-900">{selectedCustomer.email}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Phone Number</label>
-                    <p className="text-sm text-gray-900">{selectedCustomer.phone}</p>
-                  </div>
-                  {selectedCustomer.company && (
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium text-gray-500 mb-1">Company</label>
-                      <p className="text-sm text-gray-900">{selectedCustomer.company}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Address Information */}
-              {(selectedCustomer.address || selectedCustomer.city || selectedCustomer.state || selectedCustomer.zipCode) && (
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Address Information
-                  </h4>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {selectedCustomer.address && (
-                      <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-gray-500 mb-1">Street Address</label>
-                        <p className="text-sm text-gray-900">{selectedCustomer.address}</p>
-                      </div>
-                    )}
-                    {selectedCustomer.city && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">City</label>
-                        <p className="text-sm text-gray-900">{selectedCustomer.city}</p>
-                      </div>
-                    )}
-                    {selectedCustomer.state && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500 mb-1">State/Province</label>
-                        <p className="text-sm text-gray-900">{selectedCustomer.state}</p>
-                      </div>
-                    )}
-                    {selectedCustomer.zipCode && (
-                      <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-gray-500 mb-1">ZIP/Postal Code</label>
-                        <p className="text-sm text-gray-900">{selectedCustomer.zipCode}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Additional Information */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Additional Details
-                </h4>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Total Purchases</label>
-                    <p className="text-sm text-gray-900">{selectedCustomer.totalPurchases}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Last Contact</label>
-                    <p className="text-sm text-gray-900">{selectedCustomer.lastContact}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1">Created At</label>
-                    <p className="text-sm text-gray-900">{selectedCustomer.createdAt}</p>
-                  </div>
-                  {selectedCustomer.notes && (
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium text-gray-500 mb-1">Notes</label>
-                      <p className="text-sm text-gray-900">{selectedCustomer.notes}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <Button
-                  variant="outline"
-                  onClick={handleCloseModals}
-                >
-                  Close
-                </Button>
-                <Button
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-                  onClick={() => {
-                    setShowViewModal(false);
-                    handleEdit(selectedCustomer);
-                  }}
-                >
-                  Edit Customer
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
 
-      {/* Add/Edit Customer Modal */}
-      {(showAddModal || showEditModal) && (
+      {/* Add Customer Modal */}
+      {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  {showEditModal ? 'Edit Customer' : 'Add New Customer'}
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleCloseModals}
-                >
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </Button>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Personal Information Section */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Personal Information
-                </h4>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                      Full Name <span className="text-red-500">*</span>
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4">Add New Customer</h2>
+              <form onSubmit={handleSubmit}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Full Name *
                     </label>
                     <input
                       type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
+                      name="fullName"
+                      value={formData.fullName}
                       onChange={handleFormChange}
                       required
-                      placeholder="e.g., John Doe"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
+
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                      Email Address <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email *
                     </label>
                     <input
                       type="email"
-                      id="email"
                       name="email"
                       value={formData.email}
                       onChange={handleFormChange}
                       required
-                      placeholder="john.doe@example.com"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
+
                   <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone *
                     </label>
                     <input
                       type="tel"
-                      id="phone"
                       name="phone"
                       value={formData.phone}
                       onChange={handleFormChange}
                       required
-                      placeholder="+1 234-567-8900"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                  {/*<div className="sm:col-span-2">
-                    <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
-                      Company
-                    </label>
-                    <input
-                      type="text"
-                      id="company"
-                      name="company"
-                      value={formData.company}
-                      onChange={handleFormChange}
-                      placeholder="e.g., Acme Corporation"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>*/}
-                </div>
-              </div>
 
-              {/* Address Section */}
-              {/*<div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  Address Information
-                </h4>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                      Street Address
-                    </label>
-                    <input
-                      type="text"
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleFormChange}
-                      placeholder="e.g., 123 Main Street"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
                   <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleFormChange}
-                      placeholder="e.g., New York"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
-                      State/Province
-                    </label>
-                    <input
-                      type="text"
-                      id="state"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleFormChange}
-                      placeholder="e.g., NY"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">
-                      ZIP/Postal Code
-                    </label>
-                    <input
-                      type="text"
-                      id="zipCode"
-                      name="zipCode"
-                      value={formData.zipCode}
-                      onChange={handleFormChange}
-                      placeholder="e.g., 10001"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-*/}
-              {/* Status and Notes Section */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Additional Details
-                </h4>
-                <div className="grid gap-4">
-                  <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-                      Status <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Status *
                     </label>
                     <select
-                      id="status"
                       name="status"
                       value={formData.status}
                       onChange={handleFormChange}
                       required
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="lead">Lead</option>
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                     </select>
                   </div>
+
                   <div>
-                    <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-                      Notes
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                     <textarea
-                      id="notes"
                       name="notes"
                       value={formData.notes}
                       onChange={handleFormChange}
                       rows={3}
-                      placeholder="Add any additional notes or comments..."
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCloseModals}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Creating...' : 'Create Customer'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Customer Modal */}
+      {showEditModal && selectedCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4">Edit Customer</h2>
+              <form onSubmit={handleUpdate}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={formData.fullName}
+                      onChange={handleFormChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleFormChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone *
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleFormChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Status *
+                    </label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleFormChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="lead">Lead</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleFormChange}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCloseModals}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Updating...' : 'Update Customer'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Customer Modal */}
+      {showViewModal && selectedCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4">Customer Details</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Full Name
+                  </label>
+                  <p className="text-gray-900">{selectedCustomer.fullName}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <p className="text-gray-900">{selectedCustomer.email}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <p className="text-gray-900">{selectedCustomer.phone}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <span
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(
+                      selectedCustomer.status
+                    )}`}
+                  >
+                    {selectedCustomer.status}
+                  </span>
+                </div>
+
+                {selectedCustomer.notes && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <p className="text-gray-900 whitespace-pre-wrap">{selectedCustomer.notes}</p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Created At
+                  </label>
+                  <p className="text-gray-900">
+                    {new Date(selectedCustomer.createdAt).toLocaleString()}
+                  </p>
+                </div>
+
+                {selectedCustomer.updatedAt && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Updated At
+                    </label>
+                    <p className="text-gray-900">
+                      {new Date(selectedCustomer.updatedAt).toLocaleString()}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Form Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <Button
-                  type="button"
-                  variant="outline"
+              <div className="mt-6 flex justify-end gap-3">
+                <button
                   onClick={handleCloseModals}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
                 >
-                  Cancel
-                </Button>
-                <Button
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-                  type="submit">
-                  {showEditModal ? 'Update Customer' : 'Add Customer'}
-                </Button>
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    setShowViewModal(false);
+                    handleEdit(selectedCustomer);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Edit
+                </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
