@@ -206,6 +206,7 @@ class LeadController extends Controller
                 'Fuel Tank' => $lead->fuel_tank,
                 'Steering Side' => $lead->steering_side,
                 'Export To' => $lead->export_to,
+                'Export To Country' => $lead->export_to_country,
                 'Quantity' => $lead->quantity,
                 'Price' => $lead->price,
                 'Priority' => $lead->priority->value,

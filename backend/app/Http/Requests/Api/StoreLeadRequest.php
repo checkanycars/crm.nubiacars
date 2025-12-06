@@ -43,6 +43,7 @@ class StoreLeadRequest extends FormRequest
             'fuel_tank' => ['nullable', 'string', 'max:255'],
             'steering_side' => ['nullable', 'string', 'max:255'],
             'export_to' => ['nullable', 'string', 'max:255'],
+            'export_to_country' => ['nullable', 'string', 'max:255'],
             'quantity' => ['nullable', 'integer', 'min:1'],
             'price' => ['required', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],

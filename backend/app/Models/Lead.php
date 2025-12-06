@@ -37,6 +37,7 @@ class Lead extends Model
         'fuel_tank',
         'steering_side',
         'export_to',
+        'export_to_country',
         'quantity',
         'price',
         'notes',

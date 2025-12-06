@@ -34,6 +34,7 @@ class LeadResource extends JsonResource
             'fuelTank' => $this->fuel_tank,
             'steeringSide' => $this->steering_side,
             'exportTo' => $this->export_to,
+            'exportToCountry' => $this->export_to_country,
             'quantity' => $this->quantity,
             'price' => (float) $this->price,
             'notes' => $this->notes,

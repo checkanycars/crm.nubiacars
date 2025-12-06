@@ -117,6 +117,7 @@ function LeadsKanbanPage() {
     fuelTank: '',
     steeringSide: 'Left',
     exportTo: '',
+    exportToCountry: '',
     quantity: 1,
     price: 0,
     source: 'Website',
@@ -338,6 +339,7 @@ function LeadsKanbanPage() {
       fuelTank: lead.fuelTank || '',
       steeringSide: lead.steeringSide || 'Left',
       exportTo: lead.exportTo || '',
+      exportToCountry: lead.exportToCountry || '',
       quantity: lead.quantity || 1,
       price: lead.price,
       source: lead.source,
@@ -373,6 +375,7 @@ function LeadsKanbanPage() {
         fuelTank: formData.fuelTank,
         steeringSide: formData.steeringSide,
         exportTo: formData.exportTo,
+        exportToCountry: formData.exportToCountry,
         quantity: formData.quantity,
         price: formData.price,
         priority: formData.priority,
@@ -408,6 +411,7 @@ function LeadsKanbanPage() {
         fuelTank: '',
         steeringSide: 'Left',
         exportTo: '',
+        exportToCountry: '',
         quantity: 1,
         price: 0,
         source: 'Website',
@@ -445,6 +449,7 @@ function LeadsKanbanPage() {
         fuelTank: formData.fuelTank,
         steeringSide: formData.steeringSide,
         exportTo: formData.exportTo,
+        exportToCountry: formData.exportToCountry,
         quantity: formData.quantity,
         price: formData.price,
         priority: formData.priority,
@@ -476,6 +481,7 @@ function LeadsKanbanPage() {
         fuelTank: '',
         steeringSide: 'Left',
         exportTo: '',
+        exportToCountry: '',
         quantity: 1,
         price: 0,
         source: 'Website',
@@ -769,6 +775,7 @@ function LeadsKanbanPage() {
                           <span className="font-medium">Export To:</span>
                           <span className="inline-flex items-center rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800">
                             {lead.exportTo}
+                            {lead.exportTo === 'Outside GCC' && lead.exportToCountry && ` - ${lead.exportToCountry}`}
                           </span>
                         </div>
                       )}
@@ -1119,16 +1126,37 @@ function LeadsKanbanPage() {
                     <label htmlFor="exportTo" className="block text-sm font-medium text-gray-700 mb-1">
                       Export
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="exportTo"
                       name="exportTo"
                       value={formData.exportTo}
                       onChange={handleFormChange}
-                      placeholder="e.g., UAE, KSA, Kuwait"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                    >
+                      <option value="">Select export destination</option>
+                      <option value="Local (UAE)">Local (UAE)</option>
+                      <option value="Outside GCC">Outside GCC</option>
+                      <option value="Inside GCC">Inside GCC</option>
+                      <option value="Jabal Ali">Jabal Ali</option>
+                      <option value="DUCAMZ">DUCAMZ</option>
+                    </select>
                   </div>
+                  {formData.exportTo === 'Outside GCC' && (
+                    <div>
+                      <label htmlFor="exportToCountry" className="block text-sm font-medium text-gray-700 mb-1">
+                        Country
+                      </label>
+                      <input
+                        type="text"
+                        id="exportToCountry"
+                        name="exportToCountry"
+                        value={formData.exportToCountry}
+                        onChange={handleFormChange}
+                        placeholder="e.g., USA, UK, Japan"
+                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
                       Quantity
@@ -1558,16 +1586,37 @@ function LeadsKanbanPage() {
                     <label htmlFor="edit-exportTo" className="block text-sm font-medium text-gray-700 mb-1">
                       Export To
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="edit-exportTo"
                       name="exportTo"
                       value={formData.exportTo}
                       onChange={handleFormChange}
-                      placeholder="e.g., UAE, KSA, Kuwait"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                    >
+                      <option value="">Select export destination</option>
+                      <option value="Local (UAE)">Local (UAE)</option>
+                      <option value="Outside GCC">Outside GCC</option>
+                      <option value="Inside GCC">Inside GCC</option>
+                      <option value="Jabal Ali">Jabal Ali</option>
+                      <option value="DUCAMZ">DUCAMZ</option>
+                    </select>
                   </div>
+                  {formData.exportTo === 'Outside GCC' && (
+                    <div>
+                      <label htmlFor="edit-exportToCountry" className="block text-sm font-medium text-gray-700 mb-1">
+                        Country
+                      </label>
+                      <input
+                        type="text"
+                        id="edit-exportToCountry"
+                        name="exportToCountry"
+                        value={formData.exportToCountry}
+                        onChange={handleFormChange}
+                        placeholder="e.g., USA, UK, Japan"
+                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label htmlFor="edit-quantity" className="block text-sm font-medium text-gray-700 mb-1">
                       Quantity

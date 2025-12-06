@@ -20,6 +20,7 @@ export interface Lead {
   fuelTank?: string;
   steeringSide?: string;
   exportTo?: string;
+  exportToCountry?: string;
   quantity?: number;
   price: number;
   notes: string;
@@ -81,6 +82,7 @@ export interface CreateLeadData {
   fuelTank?: string;
   steeringSide?: string;
   exportTo?: string;
+  exportToCountry?: string;
   quantity?: number;
   price: number;
   priority: 'high' | 'medium' | 'low';
@@ -145,6 +147,7 @@ export const leadsService = {
       fuel_tank: data.fuelTank || '',
       steering_side: data.steeringSide || '',
       export_to: data.exportTo || '',
+      export_to_country: data.exportToCountry || '',
       quantity: data.quantity || 1,
       price: data.price,
       priority: data.priority,
@@ -178,6 +181,7 @@ export const leadsService = {
     if (data.fuelTank !== undefined) updateData.fuel_tank = data.fuelTank;
     if (data.steeringSide !== undefined) updateData.steering_side = data.steeringSide;
     if (data.exportTo !== undefined) updateData.export_to = data.exportTo;
+    if (data.exportToCountry !== undefined) updateData.export_to_country = data.exportToCountry;
     if (data.quantity !== undefined) updateData.quantity = data.quantity;
     if (data.price !== undefined) updateData.price = data.price;
     if (data.priority) updateData.priority = data.priority;
