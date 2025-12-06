@@ -3,6 +3,8 @@ import { useState, useEffect, type DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../../contexts/AuthContext';
 import { leadsService, type Lead, type CreateLeadData, type UpdateLeadData } from '../../services/leadsService';
+import { CarBrandSelect } from '@/components/ui/car-brand-select';
+import { CarModelSelect } from '@/components/ui/car-model-select';
 
 export const Route = createFileRoute('/dashboard/leads')({
   component: LeadsKanbanPage,
@@ -95,7 +97,10 @@ function LeadsKanbanPage() {
     contactName: '',
     email: '',
     phone: '',
+    carBrandId: undefined as number | undefined,
+    carBrand: '',
     carCompany: '',
+    carModelId: undefined as number | undefined,
     model: '',
     trim: '',
     spec: '',
@@ -239,6 +244,27 @@ function LeadsKanbanPage() {
     }));
   };
 
+  // Handle car brand selection
+  const handleBrandChange = (brandId: number | string, brandName?: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      carBrandId: brandId ? Number(brandId) : undefined,
+      carBrand: brandName || '',
+      carCompany: brandName || '',
+      carModelId: undefined,
+      model: '',
+    }));
+  };
+
+  // Handle car model selection
+  const handleModelChange = (modelId: number | string, modelName?: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      carModelId: modelId ? Number(modelId) : undefined,
+      model: modelName || '',
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -251,7 +277,7 @@ function LeadsKanbanPage() {
         email: formData.email,
         phone: formData.phone,
         source: formData.source,
-        carCompany: formData.carCompany,
+        carCompany: formData.carBrand || formData.carCompany,
         model: formData.model,
         trim: formData.trim,
         spec: formData.spec,
@@ -272,7 +298,10 @@ function LeadsKanbanPage() {
         contactName: '',
         email: '',
         phone: '',
+        carBrandId: undefined,
+        carBrand: '',
         carCompany: '',
+        carModelId: undefined,
         model: '',
         trim: '',
         spec: '',
@@ -721,34 +750,45 @@ function LeadsKanbanPage() {
                 </h4>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="carCompany" className="block text-sm font-medium text-gray-700 mb-1">
-                      Car Company <span className="text-red-500">*</span>
+                    <label htmlFor="carBrandId" className="block text-sm font-medium text-gray-700 mb-1">
+                      Car Brand <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      id="carCompany"
-                      name="carCompany"
-                      value={formData.carCompany}
-                      onChange={handleFormChange}
+                    <CarBrandSelect
+                      id="carBrandId"
+                      name="carBrandId"
+                      value={formData.carBrandId}
+                      onChange={handleBrandChange}
+                      placeholder="Search and select car brand..."
                       required
-                      placeholder="e.g., Toyota, Honda, Ford"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full"
                     />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Type to search (e.g., "toy" for Toyota)
+                    </p>
                   </div>
                   <div>
-                    <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="carModelId" className="block text-sm font-medium text-gray-700 mb-1">
                       Model <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      id="model"
-                      name="model"
-                      value={formData.model}
-                      onChange={handleFormChange}
+                    <CarModelSelect
+                      id="carModelId"
+                      name="carModelId"
+                      value={formData.carModelId}
+                      brandId={formData.carBrandId}
+                      onChange={handleModelChange}
+                      placeholder="Search and select car model..."
                       required
-                      placeholder="e.g., Camry, Civic, F-150"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full"
                     />
+                    {!formData.carBrandId ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Please select a brand first
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Models from {formData.carBrand} only
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label htmlFor="trim" className="block text-sm font-medium text-gray-700 mb-1">
