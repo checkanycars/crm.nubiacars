@@ -31,6 +31,8 @@ class LeadFactory extends Factory
             'source' => fake()->randomElement($sources),
             'car_company' => fake()->randomElement($carCompanies),
             'model' => fake()->word().' '.fake()->randomElement(['Sedan', 'SUV', 'Coupe', 'Hatchback']),
+            'trim' => fake()->optional()->randomElement(['Base', 'Sport', 'Limited', 'Premium', 'Platinum', 'GT']),
+            'spec' => fake()->optional()->randomElement(['GCC', 'American', 'European', 'Japanese']),
             'model_year' => fake()->numberBetween(2015, 2025),
             'kilometers' => fake()->numberBetween(0, 200000),
             'price' => fake()->randomFloat(2, 5000, 150000),

@@ -24,6 +24,8 @@ class LeadResource extends JsonResource
             'source' => $this->source,
             'carCompany' => $this->car_company,
             'model' => $this->model,
+            'trim' => $this->trim,
+            'spec' => $this->spec,
             'modelYear' => $this->model_year,
             'kilometers' => $this->kilometers,
             'price' => (float) $this->price,

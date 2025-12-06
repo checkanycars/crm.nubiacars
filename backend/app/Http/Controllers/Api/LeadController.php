@@ -196,6 +196,8 @@ class LeadController extends Controller
                 'Source' => $lead->source,
                 'Car Company' => $lead->car_company,
                 'Model' => $lead->model,
+                'Trim' => $lead->trim,
+                'Spec' => $lead->spec,
                 'Model Year' => $lead->model_year,
                 'Kilometers' => $lead->kilometers,
                 'Price' => $lead->price,

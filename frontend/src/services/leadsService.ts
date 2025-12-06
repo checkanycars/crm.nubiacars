@@ -10,6 +10,8 @@ export interface Lead {
   source: string;
   carCompany: string;
   model: string;
+  trim?: string;
+  spec?: string;
   modelYear: number;
   kilometers: number;
   price: number;
@@ -62,6 +64,8 @@ export interface CreateLeadData {
   source: string;
   carCompany: string;
   model: string;
+  trim?: string;
+  spec?: string;
   modelYear: number;
   kilometers: number;
   price: number;
@@ -117,6 +121,8 @@ export const leadsService = {
       source: data.source,
       car_company: data.carCompany,
       model: data.model,
+      trim: data.trim || '',
+      spec: data.spec || '',
       model_year: data.modelYear,
       kilometers: data.kilometers,
       price: data.price,
@@ -141,6 +147,8 @@ export const leadsService = {
     if (data.source) updateData.source = data.source;
     if (data.carCompany) updateData.car_company = data.carCompany;
     if (data.model) updateData.model = data.model;
+    if (data.trim !== undefined) updateData.trim = data.trim;
+    if (data.spec !== undefined) updateData.spec = data.spec;
     if (data.modelYear) updateData.model_year = data.modelYear;
     if (data.kilometers !== undefined) updateData.kilometers = data.kilometers;
     if (data.price !== undefined) updateData.price = data.price;

@@ -33,6 +33,8 @@ class StoreLeadRequest extends FormRequest
             'source' => ['required', 'string', 'max:255'],
             'car_company' => ['required', 'string', 'max:255'],
             'model' => ['required', 'string', 'max:255'],
+            'trim' => ['nullable', 'string', 'max:255'],
+            'spec' => ['nullable', 'string', 'max:255'],
             'model_year' => ['required', 'integer', 'min:1900', 'max:'.(date('Y') + 2)],
             'kilometers' => ['required', 'integer', 'min:0'],
             'price' => ['required', 'numeric', 'min:0'],

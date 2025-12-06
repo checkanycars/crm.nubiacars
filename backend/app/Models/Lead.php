@@ -27,6 +27,8 @@ class Lead extends Model
         'source',
         'car_company',
         'model',
+        'trim',
+        'spec',
         'model_year',
         'kilometers',
         'price',

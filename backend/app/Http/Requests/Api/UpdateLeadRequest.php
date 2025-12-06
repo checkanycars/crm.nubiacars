@@ -33,6 +33,8 @@ class UpdateLeadRequest extends FormRequest
             'source' => ['sometimes', 'string', 'max:255'],
             'car_company' => ['sometimes', 'string', 'max:255'],
             'model' => ['sometimes', 'string', 'max:255'],
+            'trim' => ['nullable', 'string', 'max:255'],
+            'spec' => ['nullable', 'string', 'max:255'],
             'model_year' => ['sometimes', 'integer', 'min:1900', 'max:'.(date('Y') + 2)],
             'kilometers' => ['sometimes', 'integer', 'min:0'],
             'price' => ['sometimes', 'numeric', 'min:0'],

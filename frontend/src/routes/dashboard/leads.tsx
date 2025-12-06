@@ -44,7 +44,7 @@ function LeadsKanbanPage() {
       }
       const response = await leadsService.getLeads(filters);
       setLeads(response.data);
-      
+
       // Extract unique sales users from leads data
       const usersMap = new Map<number, { id: number; name: string; email: string }>();
       response.data.forEach(lead => {
@@ -56,7 +56,7 @@ function LeadsKanbanPage() {
           });
         }
       });
-      
+
       // If no users found from leads, use default sales users
       if (usersMap.size === 0) {
         setSalesUsers([
@@ -97,6 +97,8 @@ function LeadsKanbanPage() {
     phone: '',
     carCompany: '',
     model: '',
+    trim: '',
+    spec: '',
     modelYear: new Date().getFullYear(),
     kilometers: 0,
     price: 0,
@@ -130,7 +132,7 @@ function LeadsKanbanPage() {
             lead.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
             lead.phone.includes(searchTerm)) &&
-        (assignedFilter === 'all' || 
+        (assignedFilter === 'all' ||
          (assignedFilter === '' && !lead.assignedTo) ||
          lead.assignedTo?.toString() === assignedFilter)
     );
@@ -242,7 +244,7 @@ function LeadsKanbanPage() {
     try {
       // Auto-assign to current user if they are sales and no assignment is made
       const assignedTo = formData.assignedTo || (hasRole('sales') && user?.id ? user.id : undefined);
-      
+
       const createData: CreateLeadData = {
         leadName: formData.leadName,
         contactName: formData.contactName,
@@ -251,6 +253,8 @@ function LeadsKanbanPage() {
         source: formData.source,
         carCompany: formData.carCompany,
         model: formData.model,
+        trim: formData.trim,
+        spec: formData.spec,
         modelYear: formData.modelYear,
         kilometers: formData.kilometers,
         price: formData.price,
@@ -258,7 +262,7 @@ function LeadsKanbanPage() {
         notes: formData.notes,
         assignedTo: assignedTo,
       };
-      
+
       const newLead = await leadsService.createLead(createData);
       setLeads([newLead, ...leads]);
       setShowAddModal(false);
@@ -270,6 +274,8 @@ function LeadsKanbanPage() {
         phone: '',
         carCompany: '',
         model: '',
+        trim: '',
+        spec: '',
         modelYear: new Date().getFullYear(),
         kilometers: 0,
         price: 0,
@@ -464,10 +470,10 @@ function LeadsKanbanPage() {
                     className={`cursor-move rounded-lg bg-white border-2 p-4 shadow-sm hover:shadow-md transition-all ${
                       draggedLead?.id === lead.id ? 'opacity-50' : ''
                     } ${
-                      lead.status === 'converted' 
-                        ? 'border-green-500' 
-                        : lead.status === 'not_converted' 
-                        ? 'border-red-500' 
+                      lead.status === 'converted'
+                        ? 'border-green-500'
+                        : lead.status === 'not_converted'
+                        ? 'border-red-500'
                         : 'border-gray-200'
                     }`}
                   >
@@ -553,6 +559,20 @@ function LeadsKanbanPage() {
 
                         {lead.carCompany} {lead.model} ({lead.modelYear})
                       </div>
+                      {(lead.trim || lead.spec) && (
+                        <div className="flex flex-wrap gap-1 text-xs mt-1">
+                          {lead.trim && (
+                            <span className="inline-flex items-center rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
+                              Trim: {lead.trim}
+                            </span>
+                          )}
+                          {lead.spec && (
+                            <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                              Spec: {lead.spec}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="flex items-center justify-between text-xs text-gray-600">
                         <span><span className="font-medium">KM:</span> {lead.kilometers.toLocaleString()}</span>
                         <span className="font-semibold text-green-600">AED {lead.price.toLocaleString()}</span>
@@ -731,6 +751,34 @@ function LeadsKanbanPage() {
                     />
                   </div>
                   <div>
+                    <label htmlFor="trim" className="block text-sm font-medium text-gray-700 mb-1">
+                      Trim
+                    </label>
+                    <input
+                      type="text"
+                      id="trim"
+                      name="trim"
+                      value={formData.trim}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Sport, Limited, Premium"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="spec" className="block text-sm font-medium text-gray-700 mb-1">
+                      Spec
+                    </label>
+                    <input
+                      type="text"
+                      id="spec"
+                      name="spec"
+                      value={formData.spec}
+                      onChange={handleFormChange}
+                      placeholder="e.g., GCC, American, European"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
                     <label htmlFor="modelYear" className="block text-sm font-medium text-gray-700 mb-1">
                       Model Year <span className="text-red-500">*</span>
                     </label>
@@ -866,19 +914,19 @@ function LeadsKanbanPage() {
 
               {/* Form Actions */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <button
+                <Button
                   type="button"
                   className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
                   onClick={() => setShowAddModal(false)}
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
                   className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
                 >
                   Add Lead
-                </button>
+                </Button>
               </div>
             </form>
           </div>

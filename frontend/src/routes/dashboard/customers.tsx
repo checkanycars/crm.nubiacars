@@ -185,8 +185,8 @@ function CustomersPage() {
     e.preventDefault();
     if (showEditModal && selectedCustomer) {
       // Update existing customer
-      setCustomers(customers.map(c => 
-        c.id === selectedCustomer.id 
+      setCustomers(customers.map(c =>
+        c.id === selectedCustomer.id
           ? { ...c, ...formData, lastContact: new Date().toISOString().split('T')[0] }
           : c
       ));
@@ -398,16 +398,16 @@ function CustomersPage() {
                       {customer.lastContact}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleView(customer)}
                         className="text-blue-600 hover:text-blue-900 mr-2"
                       >
                         View
                       </Button>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(customer)}
                         className="text-gray-600 hover:text-gray-900"
@@ -593,6 +593,7 @@ function CustomersPage() {
                   Close
                 </Button>
                 <Button
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
                   onClick={() => {
                     setShowViewModal(false);
                     handleEdit(selectedCustomer);
@@ -682,7 +683,7 @@ function CustomersPage() {
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
-                  <div className="sm:col-span-2">
+                  {/*<div className="sm:col-span-2">
                     <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
                       Company
                     </label>
@@ -695,12 +696,12 @@ function CustomersPage() {
                       placeholder="e.g., Acme Corporation"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
-                  </div>
+                  </div>*/}
                 </div>
               </div>
 
               {/* Address Section */}
-              <div>
+              {/*<div>
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -767,7 +768,7 @@ function CustomersPage() {
                   </div>
                 </div>
               </div>
-
+*/}
               {/* Status and Notes Section */}
               <div>
                 <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -820,7 +821,9 @@ function CustomersPage() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">
+                <Button
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                  type="submit">
                   {showEditModal ? 'Update Customer' : 'Add Customer'}
                 </Button>
               </div>

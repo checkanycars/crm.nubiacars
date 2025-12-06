@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CarBrandController;
+use App\Http\Controllers\Api\CarModelController;
+use App\Http\Controllers\Api\CarTrimController;
 use App\Http\Controllers\Api\LeadController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -34,4 +37,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/leads-statistics', [LeadController::class, 'statistics']);
     Route::post('/leads-bulk-destroy', [LeadController::class, 'bulkDestroy']);
     Route::get('/leads-export', [LeadController::class, 'export']);
+
+    // Car database routes
+    Route::apiResource('car-brands', CarBrandController::class);
+    Route::apiResource('car-models', CarModelController::class);
+    Route::apiResource('car-trims', CarTrimController::class);
 });
