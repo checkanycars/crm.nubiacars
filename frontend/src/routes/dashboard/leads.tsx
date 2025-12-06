@@ -110,7 +110,14 @@ function LeadsKanbanPage() {
     trim: '',
     spec: '',
     modelYear: new Date().getFullYear(),
-    kilometers: 0,
+    interiorColour: '',
+    exteriorColour: '',
+    gearBox: '',
+    carType: 'new' as 'new' | 'used',
+    fuelTank: '',
+    steeringSide: 'Left',
+    exportTo: '',
+    quantity: 1,
     price: 0,
     source: 'Website',
     priority: 'medium' as 'high' | 'medium' | 'low',
@@ -239,7 +246,7 @@ function LeadsKanbanPage() {
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const numericFields = ['modelYear', 'kilometers', 'price', 'assignedTo'];
+    const numericFields = ['modelYear', 'quantity', 'price', 'assignedTo'];
 
     setFormData((prev) => ({
       ...prev,
@@ -324,7 +331,14 @@ function LeadsKanbanPage() {
       trim: lead.trim || '',
       spec: lead.spec || '',
       modelYear: lead.modelYear,
-      kilometers: lead.kilometers,
+      interiorColour: lead.interiorColour || '',
+      exteriorColour: lead.exteriorColour || '',
+      gearBox: lead.gearBox || '',
+      carType: lead.carType || 'new',
+      fuelTank: lead.fuelTank || '',
+      steeringSide: lead.steeringSide || 'Left',
+      exportTo: lead.exportTo || '',
+      quantity: lead.quantity || 1,
       price: lead.price,
       source: lead.source,
       priority: lead.priority,
@@ -352,7 +366,14 @@ function LeadsKanbanPage() {
         trim: formData.trim,
         spec: formData.spec,
         modelYear: formData.modelYear,
-        kilometers: formData.kilometers,
+        interiorColour: formData.interiorColour,
+        exteriorColour: formData.exteriorColour,
+        gearBox: formData.gearBox,
+        carType: formData.carType,
+        fuelTank: formData.fuelTank,
+        steeringSide: formData.steeringSide,
+        exportTo: formData.exportTo,
+        quantity: formData.quantity,
         price: formData.price,
         priority: formData.priority,
         notes: formData.notes,
@@ -380,7 +401,14 @@ function LeadsKanbanPage() {
         trim: '',
         spec: '',
         modelYear: new Date().getFullYear(),
-        kilometers: 0,
+        interiorColour: '',
+        exteriorColour: '',
+        gearBox: '',
+        carType: 'new',
+        fuelTank: '',
+        steeringSide: 'Left',
+        exportTo: '',
+        quantity: 1,
         price: 0,
         source: 'Website',
         priority: 'medium',
@@ -410,7 +438,14 @@ function LeadsKanbanPage() {
         trim: formData.trim,
         spec: formData.spec,
         modelYear: formData.modelYear,
-        kilometers: formData.kilometers,
+        interiorColour: formData.interiorColour,
+        exteriorColour: formData.exteriorColour,
+        gearBox: formData.gearBox,
+        carType: formData.carType,
+        fuelTank: formData.fuelTank,
+        steeringSide: formData.steeringSide,
+        exportTo: formData.exportTo,
+        quantity: formData.quantity,
         price: formData.price,
         priority: formData.priority,
         notes: formData.notes,
@@ -434,7 +469,14 @@ function LeadsKanbanPage() {
         trim: '',
         spec: '',
         modelYear: new Date().getFullYear(),
-        kilometers: 0,
+        interiorColour: '',
+        exteriorColour: '',
+        gearBox: '',
+        carType: 'new',
+        fuelTank: '',
+        steeringSide: 'Left',
+        exportTo: '',
+        quantity: 1,
         price: 0,
         source: 'Website',
         priority: 'medium',
@@ -624,15 +666,7 @@ function LeadsKanbanPage() {
                     draggable
                     onDragStart={(e) => handleDragStart(e, lead)}
                     onDragEnd={handleDragEnd}
-                    className={`cursor-move rounded-lg bg-white border-2 p-4 shadow-sm hover:shadow-md transition-all ${
-                      draggedLead?.id === lead.id ? 'opacity-50' : ''
-                    } ${
-                      lead.status === 'converted'
-                        ? 'border-green-500'
-                        : lead.status === 'not_converted'
-                        ? 'border-red-500'
-                        : 'border-gray-200'
-                    }`}
+                    className={`cursor-move rounded-lg bg-white border-2 p-4 shadow-sm hover:shadow-md transition-all`}
                   >
                     {/* Priority Badge */}
                     <div className="flex items-start justify-between mb-2">
@@ -702,41 +736,10 @@ function LeadsKanbanPage() {
                       </span>
                     </div>
 
-                    {/* Lead & Contact Name */}
-                    <div className="mb-2">
-                      <h4 className="font-semibold text-gray-900">{lead.contactName}</h4>
-                      <p className="text-xs text-gray-500">{lead.leadName}</p>
-                    </div>
-
-                    {/* Contact Info */}
-                    <div className="space-y-1 mb-3">
-                      <div className="flex items-center gap-2 text-xs text-gray-600">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span className="truncate">{lead.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-600">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                          />
-                        </svg>
-                        <span>{lead.phone}</span>
-                      </div>
-                    </div>
-
-                    {/* Vehicle Details */}
-                    <div className="mb-2 space-y-1">
-                      <div className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
+                          {/* Vehicle Details - Simplified Display */}
+                          <div className="mb-2 space-y-2">
+                      {/* Car Name */}
+                      <div className="inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-1 text-lg font-medium text-blue-800">
                         <svg
                           className="h-3 w-3"
                           fill="none"
@@ -751,33 +754,51 @@ function LeadsKanbanPage() {
                           <circle cx="7.5" cy="16.5" r="1.5" />
                           <circle cx="16.5" cy="16.5" r="1.5" />
                         </svg>
-
                         {lead.carCompany} {lead.model} ({lead.modelYear})
-                      </div>
-                      {(lead.trim || lead.spec) && (
-                        <div className="flex flex-wrap gap-1 text-xs mt-1">
-                          {lead.trim && (
-                            <span className="inline-flex items-center rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
-                              Trim: {lead.trim}
-                            </span>
-                          )}
-                          {lead.spec && (
-                            <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                              Spec: {lead.spec}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between text-xs text-gray-600">
-                        <span><span className="font-medium">KM:</span> {lead.kilometers.toLocaleString()}</span>
-                        <span className="font-semibold text-green-600">AED {lead.price.toLocaleString()}</span>
-                      </div>
                     </div>
 
-                    {/* Notes */}
-                    {lead.notes && (
-                      <p className="text-xs text-gray-500 italic line-clamp-2 mb-2">{lead.notes}</p>
-                    )}
+                      {/* Quantity */}
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <span className="font-medium">Quantity:</span>
+                        <span>{lead.quantity || 1}</span>
+                      </div>
+                      
+                      {/* Export To */}
+                      {lead.exportTo && (
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <span className="font-medium">Export To:</span>
+                          <span className="inline-flex items-center rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800">
+                            {lead.exportTo}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Contact Info - Simplified Display */}
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2 text-xs text-gray-600 mb-1">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                        <span className="font-medium text-gray-900">{lead.contactName}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                          />
+                        </svg>
+                        <span>{lead.phone}</span>
+                      </div>
+                    </div>
 
                     {/* Not Converted Reason */}
                     {lead.notConvertedReason && lead.status === 'not_converted' && (
@@ -814,7 +835,7 @@ function LeadsKanbanPage() {
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+            <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-gray-900">Add New Lead</h3>
                 <Button
@@ -1009,18 +1030,117 @@ function LeadsKanbanPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="kilometers" className="block text-sm font-medium text-gray-700 mb-1">
-                      Kilometers <span className="text-red-500">*</span>
+                    <label htmlFor="interiorColour" className="block text-sm font-medium text-gray-700 mb-1">
+                      Interior Colour
+                    </label>
+                    <input
+                      type="text"
+                      id="interiorColour"
+                      name="interiorColour"
+                      value={formData.interiorColour}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Black, Beige, Brown"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="exteriorColour" className="block text-sm font-medium text-gray-700 mb-1">
+                      Exterior Colour
+                    </label>
+                    <input
+                      type="text"
+                      id="exteriorColour"
+                      name="exteriorColour"
+                      value={formData.exteriorColour}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Black, White, Silver"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="gearBox" className="block text-sm font-medium text-gray-700 mb-1">
+                      Gear Box
+                    </label>
+                    <input
+                      type="text"
+                      id="gearBox"
+                      name="gearBox"
+                      value={formData.gearBox}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Automatic, Manual, CVT"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="carType" className="block text-sm font-medium text-gray-700 mb-1">
+                      Car Type
+                    </label>
+                    <select
+                      id="carType"
+                      name="carType"
+                      value={formData.carType}
+                      onChange={handleFormChange}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="new">New</option>
+                      <option value="used">Used</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="fuelTank" className="block text-sm font-medium text-gray-700 mb-1">
+                      Fuel Tank
+                    </label>
+                    <input
+                      type="text"
+                      id="fuelTank"
+                      name="fuelTank"
+                      value={formData.fuelTank}
+                      onChange={handleFormChange}
+                      placeholder="e.g., 50L, 60L, 70L"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="steeringSide" className="block text-sm font-medium text-gray-700 mb-1">
+                      Steering Side
+                    </label>
+                    <select
+                      id="steeringSide"
+                      name="steeringSide"
+                      value={formData.steeringSide}
+                      onChange={handleFormChange}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="Left">Left</option>
+                      <option value="Right">Right</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="exportTo" className="block text-sm font-medium text-gray-700 mb-1">
+                      Export
+                    </label>
+                    <input
+                      type="text"
+                      id="exportTo"
+                      name="exportTo"
+                      value={formData.exportTo}
+                      onChange={handleFormChange}
+                      placeholder="e.g., UAE, KSA, Kuwait"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
+                      Quantity
                     </label>
                     <input
                       type="number"
-                      id="kilometers"
-                      name="kilometers"
-                      value={formData.kilometers}
+                      id="quantity"
+                      name="quantity"
+                      value={formData.quantity}
                       onChange={handleFormChange}
-                      required
-                      min="0"
-                      placeholder="e.g., 15000"
+                      min="1"
+                      placeholder="e.g., 1"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -1151,7 +1271,7 @@ function LeadsKanbanPage() {
       {showEditModal && editingLead && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+            <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-gray-900">Edit Lead</h3>
                 <Button
@@ -1349,18 +1469,117 @@ function LeadsKanbanPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="edit-kilometers" className="block text-sm font-medium text-gray-700 mb-1">
-                      Kilometers <span className="text-red-500">*</span>
+                    <label htmlFor="edit-interiorColour" className="block text-sm font-medium text-gray-700 mb-1">
+                      Interior Colour
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-interiorColour"
+                      name="interiorColour"
+                      value={formData.interiorColour}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Black, Beige, Brown"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-exteriorColour" className="block text-sm font-medium text-gray-700 mb-1">
+                      Exterior Colour
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-exteriorColour"
+                      name="exteriorColour"
+                      value={formData.exteriorColour}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Black, White, Silver"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-gearBox" className="block text-sm font-medium text-gray-700 mb-1">
+                      Gear Box
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-gearBox"
+                      name="gearBox"
+                      value={formData.gearBox}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Automatic, Manual, CVT"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-carType" className="block text-sm font-medium text-gray-700 mb-1">
+                      Car Type
+                    </label>
+                    <select
+                      id="edit-carType"
+                      name="carType"
+                      value={formData.carType}
+                      onChange={handleFormChange}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="new">New</option>
+                      <option value="used">Used</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="edit-fuelTank" className="block text-sm font-medium text-gray-700 mb-1">
+                      Fuel Tank
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-fuelTank"
+                      name="fuelTank"
+                      value={formData.fuelTank}
+                      onChange={handleFormChange}
+                      placeholder="e.g., 50L, 60L, 70L"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-steeringSide" className="block text-sm font-medium text-gray-700 mb-1">
+                      Steering Side
+                    </label>
+                    <select
+                      id="edit-steeringSide"
+                      name="steeringSide"
+                      value={formData.steeringSide}
+                      onChange={handleFormChange}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="Left">Left</option>
+                      <option value="Right">Right</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="edit-exportTo" className="block text-sm font-medium text-gray-700 mb-1">
+                      Export To
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-exportTo"
+                      name="exportTo"
+                      value={formData.exportTo}
+                      onChange={handleFormChange}
+                      placeholder="e.g., UAE, KSA, Kuwait"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-quantity" className="block text-sm font-medium text-gray-700 mb-1">
+                      Quantity
                     </label>
                     <input
                       type="number"
-                      id="edit-kilometers"
-                      name="kilometers"
-                      value={formData.kilometers}
+                      id="edit-quantity"
+                      name="quantity"
+                      value={formData.quantity}
                       onChange={handleFormChange}
-                      required
-                      min="0"
-                      placeholder="e.g., 15000"
+                      min="1"
+                      placeholder="e.g., 1"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -1552,3 +1771,4 @@ function LeadsKanbanPage() {
     </div>
   );
 }
+

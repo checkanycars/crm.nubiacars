@@ -13,7 +13,14 @@ export interface Lead {
   trim?: string;
   spec?: string;
   modelYear: number;
-  kilometers: number;
+  interiorColour?: string;
+  exteriorColour?: string;
+  gearBox?: string;
+  carType?: 'new' | 'used';
+  fuelTank?: string;
+  steeringSide?: string;
+  exportTo?: string;
+  quantity?: number;
   price: number;
   notes: string;
   priority: 'high' | 'medium' | 'low';
@@ -67,7 +74,14 @@ export interface CreateLeadData {
   trim?: string;
   spec?: string;
   modelYear: number;
-  kilometers: number;
+  interiorColour?: string;
+  exteriorColour?: string;
+  gearBox?: string;
+  carType?: 'new' | 'used';
+  fuelTank?: string;
+  steeringSide?: string;
+  exportTo?: string;
+  quantity?: number;
   price: number;
   priority: 'high' | 'medium' | 'low';
   notes?: string;
@@ -124,7 +138,14 @@ export const leadsService = {
       trim: data.trim || '',
       spec: data.spec || '',
       model_year: data.modelYear,
-      kilometers: data.kilometers,
+      interior_colour: data.interiorColour || '',
+      exterior_colour: data.exteriorColour || '',
+      gear_box: data.gearBox || '',
+      car_type: data.carType || '',
+      fuel_tank: data.fuelTank || '',
+      steering_side: data.steeringSide || '',
+      export_to: data.exportTo || '',
+      quantity: data.quantity || 1,
       price: data.price,
       priority: data.priority,
       notes: data.notes || '',
@@ -150,7 +171,14 @@ export const leadsService = {
     if (data.trim !== undefined) updateData.trim = data.trim;
     if (data.spec !== undefined) updateData.spec = data.spec;
     if (data.modelYear) updateData.model_year = data.modelYear;
-    if (data.kilometers !== undefined) updateData.kilometers = data.kilometers;
+    if (data.interiorColour !== undefined) updateData.interior_colour = data.interiorColour;
+    if (data.exteriorColour !== undefined) updateData.exterior_colour = data.exteriorColour;
+    if (data.gearBox !== undefined) updateData.gear_box = data.gearBox;
+    if (data.carType !== undefined) updateData.car_type = data.carType;
+    if (data.fuelTank !== undefined) updateData.fuel_tank = data.fuelTank;
+    if (data.steeringSide !== undefined) updateData.steering_side = data.steeringSide;
+    if (data.exportTo !== undefined) updateData.export_to = data.exportTo;
+    if (data.quantity !== undefined) updateData.quantity = data.quantity;
     if (data.price !== undefined) updateData.price = data.price;
     if (data.priority) updateData.priority = data.priority;
     if (data.notes !== undefined) updateData.notes = data.notes;
