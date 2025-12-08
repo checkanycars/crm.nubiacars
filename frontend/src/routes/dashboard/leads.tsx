@@ -10,6 +10,7 @@ import { CustomerSelect } from '@/components/ui/customer-select';
 import { carBrandsService } from '../../services/carBrandsService';
 import { carModelsService } from '../../services/carModelsService';
 import { customersService, type CreateCustomerData } from '../../services/customersService';
+import { usersService } from '../../services/usersService';
 
 export const Route = createFileRoute('/dashboard/leads')({
   component: LeadsKanbanPage,
@@ -42,6 +43,26 @@ function LeadsKanbanPage() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
+  // Fetch sales users from API
+  const fetchSalesUsers = async () => {
+    try {
+      const response = await usersService.getSalesList();
+      const salesList = response.sales.map(user => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      }));
+      setSalesUsers(salesList);
+    } catch (err: any) {
+      console.error('Failed to fetch sales users:', err);
+      // Set default sales users on error
+      setSalesUsers([
+        { id: 1, name: 'Sales 1', email: 'sales1@example.com' },
+        { id: 2, name: 'Sales 2', email: 'sales2@example.com' },
+      ]);
+    }
+  };
+
   // Fetch leads from API
   const fetchLeads = async () => {
     try {
@@ -54,43 +75,17 @@ function LeadsKanbanPage() {
       }
       const response = await leadsService.getLeads(filters);
       setLeads(response.data);
-
-      // Extract unique sales users from leads data
-      const usersMap = new Map<number, { id: number; name: string; email: string }>();
-      response.data.forEach(lead => {
-        if (lead.assignedUser && !usersMap.has(lead.assignedUser.id)) {
-          usersMap.set(lead.assignedUser.id, {
-            id: lead.assignedUser.id,
-            name: lead.assignedUser.name,
-            email: lead.assignedUser.email,
-          });
-        }
-      });
-
-      // If no users found from leads, use default sales users
-      if (usersMap.size === 0) {
-        setSalesUsers([
-          { id: 1, name: 'Sales 1', email: 'sales1@example.com' },
-          { id: 2, name: 'Sales 2', email: 'sales2@example.com' },
-        ]);
-      } else {
-        setSalesUsers(Array.from(usersMap.values()));
-      }
     } catch (err: any) {
       console.error('Failed to fetch leads:', err);
       setError(err?.response?.data?.message || 'Failed to load leads');
-      // Set default sales users on error
-      setSalesUsers([
-        { id: 1, name: 'Sales 1', email: 'sales1@example.com' },
-        { id: 2, name: 'Sales 2', email: 'sales2@example.com' },
-      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch leads on mount
+  // Fetch sales users and leads on mount
   useEffect(() => {
+    fetchSalesUsers();
     fetchLeads();
   }, []);
 
