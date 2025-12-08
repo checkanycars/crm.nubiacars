@@ -132,12 +132,17 @@ class UserController extends Controller
 
         $validated = $request->validated();
 
-        $user = User::create([
+        $userData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
-        ]);
+        ];
+
+        // Set target_price (default 50000 if not provided)
+        $userData['target_price'] = $validated['target_price'] ?? 50000;
+
+        $user = User::create($userData);
 
         return response()->json([
             'message' => 'User created successfully.',
@@ -191,6 +196,13 @@ class UserController extends Controller
 
         if (isset($validated['role'])) {
             $user->role = $validated['role'];
+        }
+
+        // Update target_price if provided, otherwise set default if null
+        if (array_key_exists('target_price', $validated)) {
+            $user->target_price = $validated['target_price'];
+        } elseif (is_null($user->target_price)) {
+            $user->target_price = 50000;
         }
 
         $user->save();
@@ -248,6 +260,22 @@ class UserController extends Controller
 
         return response()->json([
             'sales' => UserResource::collection($salesUsers),
+        ], 200);
+    }
+
+    /**
+     * Get list of all assignable users (both sales and managers) for assignment dropdown.
+     */
+    public function assignableList(Request $request): JsonResponse
+    {
+        // Get all users (both managers and sales) for lead assignment
+        $assignableUsers = User::whereIn('role', [UserRole::Sales, UserRole::Manager])
+            ->orderBy('role', 'desc') // Managers first
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'users' => UserResource::collection($assignableUsers),
         ], 200);
     }
 

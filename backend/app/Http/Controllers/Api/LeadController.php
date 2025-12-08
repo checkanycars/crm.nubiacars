@@ -173,6 +173,7 @@ class LeadController extends Controller
             'new' => (clone $query)->where('status', 'new')->count(),
             'converted' => (clone $query)->where('status', 'converted')->count(),
             'not_converted' => (clone $query)->where('status', 'not_converted')->count(),
+            'contacted' => (clone $query)->where('status', 'contacted')->count(),
             'high_priority' => (clone $query)->where('priority', 'high')->count(),
             'medium_priority' => (clone $query)->where('priority', 'medium')->count(),
             'low_priority' => (clone $query)->where('priority', 'low')->count(),
@@ -180,6 +181,94 @@ class LeadController extends Controller
 
         return response()->json([
             'data' => $stats,
+        ], 200);
+    }
+
+    /**
+     * Get performance statistics for sales and managers.
+     */
+    public function performance(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userId = $request->get('user_id', $user->id);
+
+        // Only managers can view other users' performance
+        if ($userId != $user->id && !$user->isManager()) {
+            return response()->json([
+                'message' => 'Unauthorized to view other user performance.',
+            ], 403);
+        }
+
+        // Get target based on role
+        $targetUser = $userId != $user->id ? \App\Models\User::find($userId) : $user;
+        if (!$targetUser) {
+            return response()->json([
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        $targetAmount = $targetUser->isManager() ? 70000 : 50000;
+
+        // Get converted leads for this user
+        $convertedLeads = Lead::where('is_active', true)
+            ->where('status', 'converted')
+            ->where('assigned_to', $userId)
+            ->get();
+
+        // Calculate total sales (sum of selling prices)
+        $totalSales = $convertedLeads->sum('selling_price');
+
+        // Calculate commission based on profit margins
+        $commission = 0;
+        $bonusCommission = 0;
+
+        foreach ($convertedLeads as $lead) {
+            $profitMargin = $lead->selling_price - $lead->cost_price;
+
+            // Commission based on profit margin ranges (0-35k target)
+            if ($totalSales <= 35000) {
+                if ($profitMargin >= 2000 && $profitMargin < 4000) {
+                    $commission += $profitMargin * 0.03; // 3%
+                } elseif ($profitMargin >= 4000 && $profitMargin < 7000) {
+                    $commission += $profitMargin * 0.07; // 7%
+                } elseif ($profitMargin >= 7000) {
+                    $commission += $profitMargin * 0.10; // 10%
+                }
+            }
+        }
+
+        // Bonus commission based on crossing targets
+        if ($totalSales > 35000 && $totalSales <= 50000) {
+            $bonusCommission = 500;
+        } elseif ($totalSales > 50000) {
+            $bonusCommission = 1000;
+        }
+
+        // Calculate remaining to target
+        $remainingToTarget = max(0, $targetAmount - $totalSales);
+        $progressPercentage = min(100, ($totalSales / $targetAmount) * 100);
+
+        return response()->json([
+            'data' => [
+                'user_id' => $userId,
+                'user_name' => $targetUser->name,
+                'user_role' => $targetUser->role->value,
+                'target' => [
+                    'amount' => $targetAmount,
+                    'achieved' => $totalSales,
+                    'remaining' => $remainingToTarget,
+                    'progress_percentage' => round($progressPercentage, 2),
+                ],
+                'commission' => [
+                    'base_commission' => round($commission, 2),
+                    'bonus_commission' => $bonusCommission,
+                    'total_commission' => round($commission + $bonusCommission, 2),
+                ],
+                'deals' => [
+                    'total_converted' => $convertedLeads->count(),
+                    'total_sales_value' => $totalSales,
+                ],
+            ],
         ], 200);
     }
 
@@ -223,6 +312,7 @@ class LeadController extends Controller
                 'Customer Email' => $lead->customer?->email ?? 'N/A',
                 'Customer Phone' => $lead->customer?->phone ?? 'N/A',
                 'Status' => $lead->status->value,
+                'Category' => $lead->category?->value ?? 'N/A',
                 'Source' => $lead->source,
                 'Car Company' => $lead->car_company,
                 'Model' => $lead->model,
@@ -238,7 +328,8 @@ class LeadController extends Controller
                 'Export To' => $lead->export_to,
                 'Export To Country' => $lead->export_to_country,
                 'Quantity' => $lead->quantity,
-                'Price' => $lead->price,
+                'Selling Price' => $lead->selling_price,
+                'Cost Price' => $lead->cost_price,
                 'Priority' => $lead->priority->value,
                 'Assigned To' => $lead->assignedUser?->name ?? 'N/A',
                 'Created At' => $lead->created_at?->toDateTimeString(),

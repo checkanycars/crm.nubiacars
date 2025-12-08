@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { leadsService } from '../../services/leadsService';
 import { customersService } from '../../services/customersService';
+import { SalesLeadsWidget } from '../../components/dashboard/SalesLeadsWidget';
+import { PerformanceWidget } from '../../components/dashboard/PerformanceWidget';
 
 export const Route = createFileRoute('/dashboard/')({
   component: DashboardIndexPage,
@@ -12,6 +14,7 @@ export const Route = createFileRoute('/dashboard/')({
 interface DashboardStats {
   totalCustomers: number;
   activeLeads: number;
+  contactedLeads: number;
   convertedLeads: number;
   notConvertedLeads: number;
   conversionRate: number;
@@ -23,6 +26,7 @@ function DashboardIndexPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalCustomers: 0,
     activeLeads: 0,
+    contactedLeads: 0,
     convertedLeads: 0,
     notConvertedLeads: 0,
     conversionRate: 0,
@@ -46,7 +50,7 @@ function DashboardIndexPage() {
 
         // Laravel pagination may return data in meta object
         const totalCustomers = customersResponse?.total ||
-                               customersResponse?.meta?.total ||
+                               (customersResponse as any)?.meta?.total ||
                                (customersResponse as any)?.data?.total || 0;
 
         // Calculate conversion rate
@@ -57,6 +61,7 @@ function DashboardIndexPage() {
         setStats({
           totalCustomers,
           activeLeads: leadsStats?.new || 0,
+          contactedLeads: leadsStats?.contacted || 0,
           convertedLeads: leadsStats?.converted || 0,
           notConvertedLeads: leadsStats?.not_converted || 0,
           conversionRate,
@@ -82,7 +87,7 @@ function DashboardIndexPage() {
   const handleCreateLead = () => {
     navigate({
       to: '/dashboard/leads',
-      search: { action: 'add' }
+      search: { action: 'add', assigned_to: undefined }
     });
   };
 
@@ -116,6 +121,9 @@ function DashboardIndexPage() {
           </div>
         )}
       </div>
+
+      {/* Performance Widget - Visible to both sales and managers */}
+      <PerformanceWidget />
 
       {/* Error Message */}
       {error && (
@@ -170,7 +178,7 @@ function DashboardIndexPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate({ to: '/dashboard/leads', search: { action: undefined } })}
+              onClick={() => navigate({ to: '/dashboard/leads', search: { action: undefined, assigned_to: undefined } })}
               className="text-blue-600 hover:text-blue-700"
             >
               View All →
@@ -195,6 +203,17 @@ function DashboardIndexPage() {
                     </div>
                   </div>
 
+                  {/* Contacted */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
+                      <span className="text-xl">📞</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Contacted</p>
+                      <p className="text-2xl font-bold text-purple-600">{stats.contactedLeads || 0}</p>
+                    </div>
+                  </div>
+
                   {/* Converted */}
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
@@ -207,7 +226,7 @@ function DashboardIndexPage() {
                   </div>
 
                   {/* Not Converted */}
-                  <div className="flex items-center gap-4 sm:col-span-2">
+                  <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
                       <span className="text-xl">❌</span>
                     </div>
@@ -233,7 +252,7 @@ function DashboardIndexPage() {
                   <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
                     <span>
                       {stats.convertedLeads || 0} converted out of{' '}
-                      {(stats.activeLeads || 0) + (stats.convertedLeads || 0) + (stats.notConvertedLeads || 0)} total leads
+                      {(stats.activeLeads || 0) + (stats.contactedLeads || 0) + (stats.convertedLeads || 0) + (stats.notConvertedLeads || 0)} total leads
                     </span>
                   </div>
                 </div>
@@ -302,6 +321,13 @@ function DashboardIndexPage() {
           </div>
         )}
       </div>
+
+      {/* Sales Performance Widget - Only visible to managers */}
+      {user?.role === 'manager' && (
+        <div className="mt-6">
+          <SalesLeadsWidget />
+        </div>
+      )}
     </div>
   );
 }

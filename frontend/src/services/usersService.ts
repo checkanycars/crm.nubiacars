@@ -6,6 +6,7 @@ import type {
   UserResponse,
   UserStatisticsResponse,
   SalesListResponse,
+  AssignableListResponse,
   BulkDeleteResponse,
   UserFilters,
 } from '../types/user';
@@ -42,6 +43,14 @@ export const usersService = {
    */
   async getSalesList(): Promise<SalesListResponse> {
     const response = await axios.get<SalesListResponse>('/api/users-sales-list');
+    return response.data;
+  },
+
+  /**
+   * Get list of all assignable users (sales and managers) for lead assignment
+   */
+  async getAssignableList(): Promise<AssignableListResponse> {
+    const response = await axios.get<AssignableListResponse>('/api/users-assignable-list');
     return response.data;
   },
 

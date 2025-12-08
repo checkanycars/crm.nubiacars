@@ -24,7 +24,7 @@ return [
     | you can specify them here. Leave empty to deactivate all old leads
     | regardless of status.
     |
-    | Available statuses: 'new', 'converted', 'not_converted'
+    | Available statuses: 'new', 'contacted', 'converted', 'not_converted'
     |
     */
 

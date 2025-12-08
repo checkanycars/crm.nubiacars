@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\LeadCategory;
 use App\LeadPriority;
 use App\LeadStatus;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,6 +29,7 @@ class StoreLeadRequest extends FormRequest
             'lead_name' => ['required', 'string', 'max:255'],
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
             'status' => ['required', 'string', Rule::enum(LeadStatus::class)],
+            'category' => ['nullable', 'string', Rule::enum(LeadCategory::class)],
             'source' => ['required', 'string', 'max:255'],
             'car_company' => ['required', 'string', 'max:255'],
             'model' => ['required', 'string', 'max:255'],
@@ -43,7 +45,8 @@ class StoreLeadRequest extends FormRequest
             'export_to' => ['nullable', 'string', 'max:255'],
             'export_to_country' => ['nullable', 'string', 'max:255'],
             'quantity' => ['nullable', 'integer', 'min:1'],
-            'price' => ['required', 'numeric', 'min:0'],
+            'selling_price' => ['nullable', 'numeric', 'min:0'],
+            'cost_price' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'priority' => ['required', 'string', Rule::enum(LeadPriority::class)],
             'not_converted_reason' => ['nullable', 'string'],
@@ -72,8 +75,8 @@ class StoreLeadRequest extends FormRequest
             'car_type.in' => 'Car type must be either "new" or "used".',
             'quantity.integer' => 'Quantity must be a valid number.',
             'quantity.min' => 'Quantity must be at least 1.',
-            'price.required' => 'Price is required.',
-            'price.min' => 'Price cannot be negative.',
+            'selling_price.min' => 'Selling price cannot be negative.',
+            'cost_price.min' => 'Cost price cannot be negative.',
             'priority.required' => 'Priority is required.',
             'assigned_to.exists' => 'The selected user does not exist.',
         ];

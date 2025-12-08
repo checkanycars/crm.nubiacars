@@ -10,6 +10,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  target_price?: number | null;
   last_login_at?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -22,6 +23,7 @@ export interface UserFormData {
   password?: string;
   password_confirmation?: string;
   role: UserRole;
+  target_price?: number | string;
 }
 
 // User statistics from backend
@@ -56,6 +58,11 @@ export interface UserStatisticsResponse {
 
 export interface SalesListResponse {
   sales: User[];
+  users?: User[];
+}
+
+export interface AssignableListResponse {
+  users: User[];
 }
 
 export interface BulkDeleteResponse {

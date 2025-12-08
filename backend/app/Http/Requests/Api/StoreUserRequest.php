@@ -30,6 +30,7 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'email', 'string', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', new Enum(UserRole::class)],
+            'target_price' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 
@@ -50,6 +51,8 @@ class StoreUserRequest extends FormRequest
             'password.min' => 'Password must be at least :min characters.',
             'password.confirmed' => 'Password confirmation does not match.',
             'role.required' => 'User role is required.',
+            'target_price.numeric' => 'Target price must be a number.',
+            'target_price.min' => 'Target price must be at least 0.',
         ];
     }
 
@@ -65,6 +68,7 @@ class StoreUserRequest extends FormRequest
             'email' => 'email address',
             'password' => 'password',
             'role' => 'user role',
+            'target_price' => 'target price',
         ];
     }
 }

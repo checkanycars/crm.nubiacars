@@ -1,6 +1,8 @@
 import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { useState, useEffect, type DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { useAuth } from '../../contexts/AuthContext';
 import { leadsService, type Lead, type CreateLeadData, type UpdateLeadData } from '../../services/leadsService';
 import { CarBrandSelect } from '@/components/ui/car-brand-select';
@@ -12,17 +14,19 @@ import { carBrandsService } from '../../services/carBrandsService';
 import { carModelsService } from '../../services/carModelsService';
 import { customersService, type CreateCustomerData } from '../../services/customersService';
 import { usersService } from '../../services/usersService';
+import { LayoutGrid, List, Edit, MoreVertical } from 'lucide-react';
 
 export const Route = createFileRoute('/dashboard/leads')({
   component: LeadsKanbanPage,
   validateSearch: (search: Record<string, unknown>) => {
     return {
       action: search.action as string | undefined,
+      assigned_to: search.assigned_to as number | undefined,
     };
   },
 });
 
-type LeadStatus = 'new' | 'converted' | 'not_converted';
+type LeadStatus = 'new' | 'contacted' | 'converted' | 'not_converted';
 
 
 
@@ -30,7 +34,7 @@ function LeadsKanbanPage() {
   const { user, hasRole } = useAuth();
   const searchParams = useSearch({ from: '/dashboard/leads' });
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [salesUsers, setSalesUsers] = useState<Array<{ id: number; name: string; email: string }>>([]);
+  const [salesUsers, setSalesUsers] = useState<Array<{ id: number; name: string; email: string; role?: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
@@ -39,24 +43,30 @@ function LeadsKanbanPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showReasonModal, setShowReasonModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [pendingLeadMove, setPendingLeadMove] = useState<{ lead: Lead; newStatus: LeadStatus } | null>(null);
   const [notConvertedReason, setNotConvertedReason] = useState('');
+  const [leadCategory, setLeadCategory] = useState<string>('');
+  const [conversionSellingPrice, setConversionSellingPrice] = useState<number>(0);
+  const [conversionCostPrice, setConversionCostPrice] = useState<number>(0);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
 
-  // Fetch sales users from API
+  // Fetch assignable users (sales and managers) from API
   const fetchSalesUsers = async () => {
     try {
-      const response = await usersService.getSalesList();
-      const salesList = response.sales.map(user => ({
+      const response = await usersService.getAssignableList();
+      const usersList = response.users.map((user: any) => ({
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
       }));
-      setSalesUsers(salesList);
+      setSalesUsers(usersList);
     } catch (err: any) {
-      console.error('Failed to fetch sales users:', err);
-      // Set default sales users on error
+      console.error('Failed to fetch assignable users:', err);
+      // Set default users on error
       setSalesUsers([
         { id: 1, name: 'Sales 1', email: 'sales1@example.com' },
         { id: 2, name: 'Sales 2', email: 'sales2@example.com' },
@@ -74,6 +84,11 @@ function LeadsKanbanPage() {
       if (hasRole('sales') && user?.id) {
         filters.assigned_to = user.id;
       }
+      // If assigned_to is provided in search params (from widget), use it
+      if (searchParams.assigned_to) {
+        filters.assigned_to = searchParams.assigned_to;
+        setAssignedFilter(String(searchParams.assigned_to));
+      }
       const response = await leadsService.getLeads(filters);
       setLeads(response.data);
     } catch (err: any) {
@@ -88,7 +103,7 @@ function LeadsKanbanPage() {
   useEffect(() => {
     fetchSalesUsers();
     fetchLeads();
-  }, []);
+  }, [searchParams.assigned_to]);
 
   // Auto-open modal when navigated with action=add parameter
   useEffect(() => {
@@ -120,9 +135,11 @@ function LeadsKanbanPage() {
     exportToCountry: '',
     exportCountryId: undefined as number | undefined,
     quantity: 1,
-    price: 0,
+    sellingPrice: 0,
+    costPrice: 0,
     source: 'Website',
     priority: 'medium' as 'high' | 'medium' | 'low',
+    category: '' as string,
     notes: '',
     assignedTo: undefined as number | undefined,
   });
@@ -134,21 +151,28 @@ function LeadsKanbanPage() {
     phone: '',
     status: 'lead' as 'active' | 'inactive' | 'lead',
     notes: '',
+    documents: [] as File[],
   });
 
   const columns: { id: LeadStatus; title: string; color: string; bgColor: string }[] = [
-    { id: 'new', title: 'New Leads', color: 'text-blue-700', bgColor: 'bg-blue-50' },
+    { id: 'new', title: 'Leads', color: 'text-blue-700', bgColor: 'bg-blue-50' },
+    { id: 'contacted', title: 'Contacted', color: 'text-purple-700', bgColor: 'bg-purple-50' },
     { id: 'converted', title: 'Converted', color: 'text-green-700', bgColor: 'bg-green-50' },
     { id: 'not_converted', title: 'Not Converted', color: 'text-red-700', bgColor: 'bg-red-50' },
   ];
 
   const getSalesPersonName = (assignedTo: number | undefined, assignedUser?: Lead['assignedUser']) => {
     if (assignedUser) {
-      return assignedUser.name;
+      const role = assignedUser.role ? ` (${assignedUser.role.charAt(0).toUpperCase() + assignedUser.role.slice(1)})` : '';
+      return assignedUser.name + role;
     }
     if (!assignedTo) return 'Unassigned';
     const user = salesUsers.find(u => u.id === assignedTo);
-    return user ? user.name : 'Unassigned';
+    if (user) {
+      const role = user.role ? ` (${user.role.charAt(0).toUpperCase() + user.role.slice(1)})` : '';
+      return user.name + role;
+    }
+    return 'Unassigned';
   };
 
   const getLeadsByStatus = (status: LeadStatus) => {
@@ -187,6 +211,13 @@ function LeadsKanbanPage() {
       if (newStatus === 'not_converted') {
         setPendingLeadMove({ lead: draggedLead, newStatus });
         setShowReasonModal(true);
+      } else if (newStatus === 'converted') {
+        // If moving to converted, show category modal
+        setPendingLeadMove({ lead: draggedLead, newStatus });
+        setLeadCategory(draggedLead.category || '');
+        setConversionSellingPrice(draggedLead.sellingPrice || 0);
+        setConversionCostPrice(draggedLead.costPrice || 0);
+        setShowCategoryModal(true);
       } else {
         // Otherwise, update status directly
         try {
@@ -232,6 +263,41 @@ function LeadsKanbanPage() {
     setShowReasonModal(false);
     setPendingLeadMove(null);
     setNotConvertedReason('');
+  };
+
+  const handleCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pendingLeadMove && leadCategory) {
+      try {
+        const updatedLead = await leadsService.updateLead(pendingLeadMove.lead.id, {
+          status: pendingLeadMove.newStatus,
+          category: leadCategory as any,
+          sellingPrice: conversionSellingPrice || undefined,
+          costPrice: conversionCostPrice || undefined,
+        });
+        setLeads((prevLeads) =>
+          prevLeads.map((lead) =>
+            lead.id === pendingLeadMove.lead.id ? updatedLead : lead
+          )
+        );
+        setShowCategoryModal(false);
+        setPendingLeadMove(null);
+        setLeadCategory('');
+        setConversionSellingPrice(0);
+        setConversionCostPrice(0);
+      } catch (err: any) {
+        console.error('Failed to update lead:', err);
+        alert(err?.response?.data?.message || 'Failed to update lead');
+      }
+    }
+  };
+
+  const handleCategoryCancel = () => {
+    setShowCategoryModal(false);
+    setPendingLeadMove(null);
+    setLeadCategory('');
+    setConversionSellingPrice(0);
+    setConversionCostPrice(0);
   };
 
   const handleDragEnd = () => {
@@ -335,9 +401,26 @@ function LeadsKanbanPage() {
   // Handle customer form change
   const handleCustomerFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setCustomerFormData((prev) => ({
+    setCustomerFormData(prev => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handleCustomerDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      setCustomerFormData(prev => ({
+        ...prev,
+        documents: [...prev.documents, ...Array.from(files)],
+      }));
+    }
+  };
+
+  const removeCustomerDocument = (index: number) => {
+    setCustomerFormData(prev => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index),
     }));
   };
 
@@ -353,7 +436,10 @@ function LeadsKanbanPage() {
         notes: customerFormData.notes,
       };
 
-      const newCustomer = await customersService.createCustomer(customerData);
+      const newCustomer = await customersService.createCustomer(
+        customerData,
+        customerFormData.documents.length > 0 ? customerFormData.documents : undefined
+      );
 
       // Auto-select the newly created customer
       setFormData((prev) => ({
@@ -371,6 +457,7 @@ function LeadsKanbanPage() {
         phone: '',
         status: 'lead',
         notes: '',
+        documents: [],
       });
       setShowAddCustomerModal(false);
 
@@ -471,9 +558,11 @@ function LeadsKanbanPage() {
       exportToCountry: lead.exportToCountry || '',
       exportCountryId: countryId,
       quantity: lead.quantity || 1,
-      price: lead.price,
+      sellingPrice: lead.sellingPrice || 0,
+      costPrice: lead.costPrice || 0,
       source: lead.source,
       priority: lead.priority,
+      category: lead.category || '',
       notes: lead.notes || '',
       assignedTo: lead.assignedTo,
     });
@@ -505,8 +594,10 @@ function LeadsKanbanPage() {
         exportTo: formData.exportTo,
         exportToCountry: formData.exportToCountry,
         quantity: formData.quantity,
-        price: formData.price,
+        sellingPrice: formData.sellingPrice,
+        costPrice: formData.costPrice,
         priority: formData.priority,
+        category: (formData.category as any) || undefined,
         notes: formData.notes,
         assignedTo: formData.assignedTo,
       };
@@ -543,9 +634,11 @@ function LeadsKanbanPage() {
         exportToCountry: '',
         exportCountryId: undefined,
         quantity: 1,
-        price: 0,
+        sellingPrice: 0,
+        costPrice: 0,
         source: 'Website',
         priority: 'medium' as 'high' | 'medium' | 'low',
+        category: '',
         notes: '',
         assignedTo: undefined,
       });
@@ -579,8 +672,10 @@ function LeadsKanbanPage() {
         exportTo: formData.exportTo,
         exportToCountry: formData.exportToCountry,
         quantity: formData.quantity,
-        price: formData.price,
+        sellingPrice: formData.sellingPrice,
+        costPrice: formData.costPrice,
         priority: formData.priority,
+        category: (formData.category as any) || undefined,
         notes: formData.notes,
         assignedTo: assignedTo,
       };
@@ -613,9 +708,11 @@ function LeadsKanbanPage() {
         exportToCountry: '',
         exportCountryId: undefined,
         quantity: 1,
-        price: 0,
+        sellingPrice: 0,
+        costPrice: 0,
         source: 'Website',
         priority: 'medium',
+        category: '',
         notes: '',
         assignedTo: undefined,
       });
@@ -680,28 +777,44 @@ function LeadsKanbanPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Leads Kanban Board</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Leads Management</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {hasRole('manager') ? 'Manage your sales leads with drag and drop' : 'Your assigned leads'}
+            {hasRole('manager') ? 'Manage your sales leads' : 'Your assigned leads'}
             {hasRole('sales') && (
               <span className="ml-2 text-purple-600 font-medium">(Showing only your leads)</span>
             )}
           </p>
         </div>
-        {hasRole('manager') && (
-          <Button
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-            onClick={() => setShowAddModal(true)}>
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Lead
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'kanban' | 'list')} className="w-auto">
+            <TabsList>
+              <TabsTrigger value="kanban" className="flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4" />
+                Kanban
+              </TabsTrigger>
+              <TabsTrigger value="list" className="flex items-center gap-2">
+                <List className="h-4 w-4" />
+                List
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          {hasRole('manager') && (
+            <Button
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+              onClick={() => setShowAddModal(true)}>
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Lead
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {columns.map((column) => (
           <div key={column.id} className={`rounded-lg ${column.bgColor} border border-gray-200 p-4`}>
             <div className="flex items-center justify-between">
@@ -711,6 +824,7 @@ function LeadsKanbanPage() {
               </div>
               <div className={`rounded-full ${column.bgColor} p-3`}>
                 {column.id === 'new' && <span className="text-2xl">📥</span>}
+                {column.id === 'contacted' && <span className="text-2xl">📞</span>}
                 {column.id === 'converted' && <span className="text-2xl">✅</span>}
                 {column.id === 'not_converted' && <span className="text-2xl">❌</span>}
               </div>
@@ -748,9 +862,11 @@ function LeadsKanbanPage() {
                 onChange={(e) => setAssignedFilter(e.target.value)}
                 className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option value="all">All Sales People</option>
+                <option value="all">All Users</option>
                 {salesUsers.map(user => (
-                  <option key={user.id} value={user.id.toString()}>{user.name}</option>
+                  <option key={user.id} value={user.id.toString()}>
+                    {user.name} {user.role ? `(${user.role.charAt(0).toUpperCase() + user.role.slice(1)})` : ''}
+                  </option>
                 ))}
                 <option value="">Unassigned</option>
               </select>
@@ -760,7 +876,8 @@ function LeadsKanbanPage() {
       </div>
 
       {/* Kanban Board */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      {viewMode === 'kanban' && (
+        <div className="grid gap-6 lg:grid-cols-4">
         {columns.map((column) => (
           <div
             key={column.id}
@@ -779,7 +896,7 @@ function LeadsKanbanPage() {
             </div>
 
             {/* Column Content */}
-            <div className="min-h-[500px] p-4 space-y-3">
+            <div className="min-h-[500px] max-h-[700px] overflow-y-auto p-4 space-y-3">
               {getLeadsByStatus(column.id).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="rounded-full bg-gray-200 p-3 mb-3">
@@ -865,8 +982,8 @@ function LeadsKanbanPage() {
                     {/* Lead Timer - Shows time elapsed since creation */}
                     {lead.status === 'new' && (
                       <div className="mb-3">
-                        <LeadTimer 
-                          createdAt={lead.createdAt} 
+                        <LeadTimer
+                          createdAt={lead.createdAt}
                           priority={lead.priority}
                         />
                       </div>
@@ -976,7 +1093,269 @@ function LeadsKanbanPage() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
+
+      {/* List View */}
+      {viewMode === 'list' && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Lead Info</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Vehicle</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    Last Updated
+                    <svg className="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </TableHead>
+                {hasRole('manager') && <TableHead className="text-right">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {leads
+                .filter(
+                  (lead) =>
+                    (searchTerm === '' ||
+                      lead.leadName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      lead.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      lead.phone.includes(searchTerm)) &&
+                    (assignedFilter === 'all' ||
+                      (assignedFilter === '' && !lead.assignedTo) ||
+                      lead.assignedTo?.toString() === assignedFilter)
+                )
+                .sort((a, b) => {
+                  // Sort by updatedAt (most recent first)
+                  const dateA = new Date(a.updatedAt || a.createdAt).getTime();
+                  const dateB = new Date(b.updatedAt || b.createdAt).getTime();
+                  return dateB - dateA;
+                })
+                .map((lead) => (
+                  <TableRow key={lead.id}>
+                    {/* Lead Info */}
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-gray-900">{lead.leadName}</span>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>Source: {lead.source}</span>
+                          {lead.quantity && lead.quantity > 1 && (
+                            <span className="inline-flex items-center rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                              Qty: {lead.quantity}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Contact */}
+                    <TableCell>
+                      <div className="flex flex-col gap-1 text-sm">
+                        <span className="font-medium text-gray-900">{lead.contactName}</span>
+                        <span className="text-gray-600">{lead.phone}</span>
+                        <span className="text-gray-500 text-xs">{lead.email}</span>
+                      </div>
+                    </TableCell>
+
+                    {/* Vehicle */}
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-gray-900">
+                          {lead.carCompany} {lead.model}
+                        </span>
+                        <span className="text-sm text-gray-600">Year: {lead.modelYear}</span>
+                        {lead.exportTo && (
+                          <span className="inline-flex w-fit items-center rounded bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800">
+                            {lead.exportTo}
+                            {lead.exportTo === 'Outside GCC' && lead.exportToCountry && ` - ${lead.exportToCountry}`}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Status */}
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <span
+                          className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                            lead.status === 'new'
+                              ? 'bg-blue-100 text-blue-800'
+                              : lead.status === 'contacted'
+                              ? 'bg-purple-100 text-purple-800'
+                              : lead.status === 'converted'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {lead.status === 'new'
+                            ? 'New'
+                            : lead.status === 'contacted'
+                            ? 'Contacted'
+                            : lead.status === 'converted'
+                            ? 'Converted'
+                            : 'Not Converted'}
+                        </span>
+                        {lead.status === 'new' && (
+                          <div className="mt-1">
+                            <LeadTimer createdAt={lead.createdAt} priority={lead.priority} compact />
+                          </div>
+                        )}
+                        {lead.notConvertedReason && lead.status === 'not_converted' && (
+                          <span className="text-xs text-red-600 mt-1">{lead.notConvertedReason}</span>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Priority */}
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                          lead.priority === 'high'
+                            ? 'bg-red-100 text-red-800'
+                            : lead.priority === 'medium'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${getPriorityColor(lead.priority)}`}></span>
+                        {lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1)}
+                      </span>
+                    </TableCell>
+
+                    {/* Assigned To */}
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 text-sm text-gray-700">
+                        <svg className="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                        {getSalesPersonName(lead.assignedTo, lead.assignedUser)}
+                      </span>
+                    </TableCell>
+
+                    {/* Updated */}
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            {new Date(lead.updatedAt || lead.createdAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                          {(() => {
+                            const updatedDate = new Date(lead.updatedAt || lead.createdAt);
+                            const now = new Date();
+                            const hoursDiff = (now.getTime() - updatedDate.getTime()) / (1000 * 60 * 60);
+                            return hoursDiff < 24 && (
+                              <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                                New
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        {lead.updatedAt && lead.updatedAt !== lead.createdAt && (
+                          <span className="text-xs text-gray-500">
+                            Created: {new Date(lead.createdAt).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Actions */}
+                    {hasRole('manager') && (
+                      <TableCell className="text-right">
+                        <div className="relative inline-block">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(openDropdownId === lead.id ? null : lead.id);
+                            }}
+                            className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+
+                          {/* Dropdown Menu */}
+                          {openDropdownId === lead.id && (
+                            <>
+                              {/* Backdrop to close dropdown */}
+                              <div className="fixed inset-0 z-10" onClick={() => setOpenDropdownId(null)} />
+
+                              {/* Dropdown Content */}
+                              <div className="absolute right-0 top-10 z-20 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+                                <div className="py-1" role="menu">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditLead(lead);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    role="menuitem"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                    Edit Lead
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+
+          {/* Empty State for List View */}
+          {leads.filter(
+            (lead) =>
+              (searchTerm === '' ||
+                lead.leadName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                lead.contactName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                lead.phone.includes(searchTerm)) &&
+              (assignedFilter === 'all' ||
+                (assignedFilter === '' && !lead.assignedTo) ||
+                lead.assignedTo?.toString() === assignedFilter)
+          ).length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-gray-200 p-3 mb-3">
+                <svg className="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                  />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-500">No leads found</p>
+              <p className="text-xs text-gray-400 mt-1">Try adjusting your search or filters</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add Lead Modal */}
       {showAddModal && (
@@ -1316,17 +1695,32 @@ function LeadsKanbanPage() {
                       />
                     </div>
                   )}
-                  <div className="sm:col-span-2">
-                    <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                      Price ($) <span className="text-red-500">*</span>
+                  <div>
+                    <label htmlFor="sellingPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                      Selling Price (AED)
                     </label>
                     <input
                       type="number"
-                      id="price"
-                      name="price"
-                      value={formData.price}
+                      id="sellingPrice"
+                      name="sellingPrice"
+                      value={formData.sellingPrice}
                       onChange={handleFormChange}
-                      required
+                      min="0"
+                      step="100"
+                      placeholder="e.g., 35000"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="costPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                      Cost Price (AED)
+                    </label>
+                    <input
+                      type="number"
+                      id="costPrice"
+                      name="costPrice"
+                      value={formData.costPrice}
+                      onChange={handleFormChange}
                       min="0"
                       step="100"
                       placeholder="e.g., 25000"
@@ -1378,9 +1772,28 @@ function LeadsKanbanPage() {
                       required
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
                       <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                      Category
+                    </label>
+                    <select
+                      id="category"
+                      name="category"
+                      value={formData.category}
+                      onChange={handleFormChange}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Select category...</option>
+                      <option value="local_new">Local New</option>
+                      <option value="local_used">Local Used</option>
+                      <option value="premium_export">Premium Export</option>
+                      <option value="regular_export">Regular Export</option>
+                      <option value="commercial_export">Commercial Export</option>
                     </select>
                   </div>
                   <div className="sm:col-span-2">
@@ -1395,9 +1808,11 @@ function LeadsKanbanPage() {
                       required
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
-                      <option value="">Select sales person...</option>
+                      <option value="">Select user...</option>
                       {salesUsers.map(user => (
-                        <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
+                        <option key={user.id} value={user.id}>
+                          {user.name} {user.role ? `(${user.role.charAt(0).toUpperCase() + user.role.slice(1)})` : ''} - {user.email}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -1780,17 +2195,32 @@ function LeadsKanbanPage() {
                       />
                     </div>
                   )}
-                  <div className="sm:col-span-2">
-                    <label htmlFor="edit-price" className="block text-sm font-medium text-gray-700 mb-1">
-                      Price ($) <span className="text-red-500">*</span>
+                  <div>
+                    <label htmlFor="edit-sellingPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                      Selling Price ($)
                     </label>
                     <input
                       type="number"
-                      id="edit-price"
-                      name="price"
-                      value={formData.price}
+                      id="edit-sellingPrice"
+                      name="sellingPrice"
+                      value={formData.sellingPrice}
                       onChange={handleFormChange}
-                      required
+                      min="0"
+                      step="100"
+                      placeholder="e.g., 35000"
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-costPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                      Cost Price ($)
+                    </label>
+                    <input
+                      type="number"
+                      id="edit-costPrice"
+                      name="costPrice"
+                      value={formData.costPrice}
+                      onChange={handleFormChange}
                       min="0"
                       step="100"
                       placeholder="e.g., 25000"
@@ -1847,6 +2277,25 @@ function LeadsKanbanPage() {
                       <option value="high">High</option>
                     </select>
                   </div>
+                  <div>
+                    <label htmlFor="edit-category" className="block text-sm font-medium text-gray-700 mb-1">
+                      Category
+                    </label>
+                    <select
+                      id="edit-category"
+                      name="category"
+                      value={formData.category}
+                      onChange={handleFormChange}
+                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="">Select category...</option>
+                      <option value="local_new">Local New</option>
+                      <option value="local_used">Local Used</option>
+                      <option value="premium_export">Premium Export</option>
+                      <option value="regular_export">Regular Export</option>
+                      <option value="commercial_export">Commercial Export</option>
+                    </select>
+                  </div>
                   <div className="sm:col-span-2">
                     <label htmlFor="edit-assignedTo" className="block text-sm font-medium text-gray-700 mb-1">
                       Assign To <span className="text-red-500">*</span>
@@ -1859,9 +2308,11 @@ function LeadsKanbanPage() {
                       required
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
-                      <option value="">Select sales person...</option>
+                      <option value="">Select user...</option>
                       {salesUsers.map(user => (
-                        <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
+                        <option key={user.id} value={user.id}>
+                          {user.name} {user.role ? `(${user.role.charAt(0).toUpperCase() + user.role.slice(1)})` : ''} - {user.email}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -1966,6 +2417,118 @@ function LeadsKanbanPage() {
         </div>
       )}
 
+      {/* Lead Category Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="bg-green-50 border-b border-green-200 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">Lead Converted</h3>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={handleCategoryCancel}
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+
+            <form onSubmit={handleCategorySubmit} className="p-6 space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Please provide details for this converted lead:
+                </p>
+                <label htmlFor="leadCategory" className="block text-sm font-medium text-gray-700 mb-2">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="leadCategory"
+                  value={leadCategory}
+                  onChange={(e) => setLeadCategory(e.target.value)}
+                  required
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                  autoFocus
+                >
+                  <option value="">Select a category...</option>
+                  <option value="local_new">Local New</option>
+                  <option value="local_used">Local Used</option>
+                  <option value="premium_export">Premium Export</option>
+                  <option value="regular_export">Regular Export</option>
+                  <option value="commercial_export">Commercial Export</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="conversionSellingPrice" className="block text-sm font-medium text-gray-700 mb-2">
+                    Selling Price (AED)
+                  </label>
+                  <input
+                    type="number"
+                    id="conversionSellingPrice"
+                    value={conversionSellingPrice || ''}
+                    onChange={(e) => setConversionSellingPrice(Number(e.target.value))}
+                    min="0"
+                    step="100"
+                    placeholder="e.g., 35000"
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="conversionCostPrice" className="block text-sm font-medium text-gray-700 mb-2">
+                    Cost Price (AED)
+                  </label>
+                  <input
+                    type="number"
+                    id="conversionCostPrice"
+                    value={conversionCostPrice || ''}
+                    onChange={(e) => setConversionCostPrice(Number(e.target.value))}
+                    min="0"
+                    step="100"
+                    placeholder="e.g., 25000"
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                  />
+                </div>
+              </div>
+
+              {/* Profit Margin Indicator */}
+              {conversionSellingPrice > 0 && conversionCostPrice > 0 && (
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-gray-700">Profit Margin:</span>
+                    <span className={`font-bold ${conversionSellingPrice > conversionCostPrice ? 'text-green-600' : 'text-red-600'}`}>
+                      ${(conversionSellingPrice - conversionCostPrice).toLocaleString()}
+                      ({conversionSellingPrice > 0 ? (((conversionSellingPrice - conversionCostPrice) / conversionSellingPrice) * 100).toFixed(1) : 0}%)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 transition-colors"
+                  onClick={handleCategoryCancel}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
+                  disabled={!leadCategory}
+                >
+                  Confirm Category
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Add Customer Modal */}
       {showAddCustomerModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-4">
@@ -2062,6 +2625,61 @@ function LeadsKanbanPage() {
                     placeholder="Additional notes about the customer..."
                     className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Documents
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <label className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600 transition-colors hover:border-blue-400 hover:bg-blue-50">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span>Upload Documents</span>
+                        </div>
+                        <input
+                          type="file"
+                          multiple
+                          onChange={handleCustomerDocumentChange}
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        />
+                      </label>
+                    </div>
+
+                    {customerFormData.documents.length > 0 && (
+                      <div className="space-y-2">
+                        {customerFormData.documents.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <svg className="h-5 w-5 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                              <span className="text-xs text-gray-500 shrink-0">
+                                ({(file.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeCustomerDocument(index)}
+                              className="ml-2 shrink-0 text-red-500 hover:text-red-700 transition-colors"
+                            >
+                              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

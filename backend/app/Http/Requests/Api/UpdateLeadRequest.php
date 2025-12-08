@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\LeadCategory;
 use App\LeadPriority;
 use App\LeadStatus;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,6 +29,7 @@ class UpdateLeadRequest extends FormRequest
             'lead_name' => ['sometimes', 'string', 'max:255'],
             'customer_id' => ['sometimes', 'integer', 'exists:customers,id'],
             'status' => ['sometimes', 'string', Rule::enum(LeadStatus::class)],
+            'category' => ['nullable', 'string', Rule::enum(LeadCategory::class)],
             'source' => ['sometimes', 'string', 'max:255'],
             'car_company' => ['sometimes', 'string', 'max:255'],
             'model' => ['sometimes', 'string', 'max:255'],
@@ -43,7 +45,8 @@ class UpdateLeadRequest extends FormRequest
             'export_to' => ['nullable', 'string', 'max:255'],
             'export_to_country' => ['nullable', 'string', 'max:255'],
             'quantity' => ['nullable', 'integer', 'min:1'],
-            'price' => ['sometimes', 'numeric', 'min:0'],
+            'selling_price' => ['sometimes', 'numeric', 'min:0'],
+            'cost_price' => ['sometimes', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
             'priority' => ['sometimes', 'string', Rule::enum(LeadPriority::class)],
             'not_converted_reason' => ['nullable', 'string'],
@@ -73,8 +76,10 @@ class UpdateLeadRequest extends FormRequest
             'car_type.in' => 'Car type must be either "new" or "used".',
             'quantity.integer' => 'Quantity must be a valid number.',
             'quantity.min' => 'Quantity must be at least 1.',
-            'price.numeric' => 'Price must be a valid number.',
-            'price.min' => 'Price cannot be negative.',
+            'selling_price.numeric' => 'Selling price must be a valid number.',
+            'selling_price.min' => 'Selling price cannot be negative.',
+            'cost_price.numeric' => 'Cost price must be a valid number.',
+            'cost_price.min' => 'Cost price cannot be negative.',
             'priority.string' => 'Priority must be a valid string.',
             'assigned_to.exists' => 'The selected user does not exist.',
         ];

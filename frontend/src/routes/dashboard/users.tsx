@@ -58,6 +58,7 @@ function UsersPage() {
     password: '',
     password_confirmation: '',
     role: 'sales',
+    target_price: 50000,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -119,6 +120,7 @@ function UsersPage() {
       password: '',
       password_confirmation: '',
       role: 'sales',
+      target_price: 50000,
     });
     setFormErrors({});
     setShowPassword(false);
@@ -142,10 +144,9 @@ function UsersPage() {
       password: '',
       password_confirmation: '',
       role: user.role,
+      target_price: user.target_price || 50000,
     });
     setFormErrors({});
-    setShowEditPassword(false);
-    setShowEditConfirmPassword(false);
     setShowEditModal(true);
   };
 
@@ -213,6 +214,7 @@ function UsersPage() {
         name: formData.name,
         email: formData.email,
         role: formData.role,
+        target_price: formData.target_price,
       };
 
       if (formData.password) {
@@ -607,7 +609,14 @@ function UsersPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                   <select
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'manager' | 'sales' })}
+                    onChange={(e) => {
+                      const newRole = e.target.value as 'manager' | 'sales';
+                      setFormData({ 
+                        ...formData, 
+                        role: newRole,
+                        target_price: formData.target_price || 50000
+                      });
+                    }}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     required
                   >
@@ -615,6 +624,19 @@ function UsersPage() {
                     <option value="manager">Manager</option>
                   </select>
                   {formErrors.role && <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Target Price (AED)</label>
+                  <input
+                    type="number"
+                    value={formData.target_price || ''}
+                    onChange={(e) => setFormData({ ...formData, target_price: e.target.value ? Number(e.target.value) : undefined })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="50000"
+                    min="0"
+                    step="1000"
+                  />
+                  {formErrors.target_price && <p className="mt-1 text-sm text-red-600">{formErrors.target_price}</p>}
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button
@@ -737,7 +759,14 @@ function UsersPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                   <select
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as 'manager' | 'sales' })}
+                    onChange={(e) => {
+                      const newRole = e.target.value as 'manager' | 'sales';
+                      setFormData({ 
+                        ...formData, 
+                        role: newRole,
+                        target_price: formData.target_price || 50000
+                      });
+                    }}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     required
                   >
@@ -745,6 +774,19 @@ function UsersPage() {
                     <option value="manager">Manager</option>
                   </select>
                   {formErrors.role && <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Target Price (AED)</label>
+                  <input
+                    type="number"
+                    value={formData.target_price || ''}
+                    onChange={(e) => setFormData({ ...formData, target_price: e.target.value ? Number(e.target.value) : undefined })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="50000"
+                    min="0"
+                    step="1000"
+                  />
+                  {formErrors.target_price && <p className="mt-1 text-sm text-red-600">{formErrors.target_price}</p>}
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button

@@ -38,6 +38,7 @@ class UpdateUserRequest extends FormRequest
             ],
             'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
             'role' => ['sometimes', new Enum(UserRole::class)],
+            'target_price' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 
@@ -54,6 +55,8 @@ class UpdateUserRequest extends FormRequest
             'email.unique' => 'This email address is already registered.',
             'password.min' => 'Password must be at least :min characters.',
             'password.confirmed' => 'Password confirmation does not match.',
+            'target_price.numeric' => 'Target price must be a number.',
+            'target_price.min' => 'Target price must be at least 0.',
         ];
     }
 
@@ -69,6 +72,7 @@ class UpdateUserRequest extends FormRequest
             'email' => 'email address',
             'password' => 'password',
             'role' => 'user role',
+            'target_price' => 'target price',
         ];
     }
 }

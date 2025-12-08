@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->timestamp('last_login_at')->nullable()->after('remember_token');
+        Schema::table('leads', function (Blueprint $table) {
+            $table->string('category')->nullable()->after('status');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('last_login_at');
+        Schema::table('leads', function (Blueprint $table) {
+            $table->dropColumn('category');
         });
     }
 };

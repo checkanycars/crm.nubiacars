@@ -25,6 +25,9 @@ class User extends Authenticatable
         'password',
         'role',
         'last_login_at',
+        'target_price',
+        'commission',
+        'bonus_commission',
     ];
 
     /**
@@ -49,6 +52,9 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'last_login_at' => 'datetime',
+            'target_price' => 'decimal:2',
+            'commission' => 'decimal:2',
+            'bonus_commission' => 'decimal:2',
         ];
     }
 

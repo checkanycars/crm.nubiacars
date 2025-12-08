@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\LeadCategory;
 use App\LeadPriority;
 use App\LeadStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,7 @@ class Lead extends Model
         'lead_name',
         'customer_id',
         'status',
+        'category',
         'source',
         'car_company',
         'model',
@@ -37,7 +39,8 @@ class Lead extends Model
         'export_to',
         'export_to_country',
         'quantity',
-        'price',
+        'selling_price',
+        'cost_price',
         'notes',
         'priority',
         'not_converted_reason',
@@ -54,10 +57,12 @@ class Lead extends Model
     {
         return [
             'status' => LeadStatus::class,
+            'category' => LeadCategory::class,
             'priority' => LeadPriority::class,
             'model_year' => 'integer',
             'quantity' => 'integer',
-            'price' => 'decimal:2',
+            'selling_price' => 'decimal:2',
+            'cost_price' => 'decimal:2',
             'is_active' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
@@ -86,6 +91,14 @@ class Lead extends Model
     public function isNew(): bool
     {
         return $this->status === LeadStatus::New;
+    }
+
+    /**
+     * Check if lead is contacted.
+     */
+    public function isContacted(): bool
+    {
+        return $this->status === LeadStatus::Contacted;
     }
 
     /**

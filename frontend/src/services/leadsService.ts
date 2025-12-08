@@ -1,5 +1,7 @@
 import axios from '../lib/axios';
 
+export type LeadCategory = 'local_new' | 'local_used' | 'premium_export' | 'regular_export' | 'commercial_export';
+
 export interface Lead {
   id: number;
   leadName: string;
@@ -14,7 +16,8 @@ export interface Lead {
     phone: string;
     status: string;
   };
-  status: 'new' | 'converted' | 'not_converted';
+  status: 'new' | 'contacted' | 'converted' | 'not_converted';
+  category?: LeadCategory;
   source: string;
   carCompany: string;
   model: string;
@@ -30,7 +33,8 @@ export interface Lead {
   exportTo?: string;
   exportToCountry?: string;
   quantity?: number;
-  price: number;
+  sellingPrice?: number;
+  costPrice?: number;
   notes: string;
   priority: 'high' | 'medium' | 'low';
   notConvertedReason?: string;
@@ -65,11 +69,33 @@ export interface LeadFilters {
 export interface LeadStatistics {
   total: number;
   new: number;
+  contacted: number;
   converted: number;
   not_converted: number;
   high_priority: number;
   medium_priority: number;
   low_priority: number;
+}
+
+export interface PerformanceStatistics {
+  user_id: number;
+  user_name: string;
+  user_role: string;
+  target: {
+    amount: number;
+    achieved: number;
+    remaining: number;
+    progress_percentage: number;
+  };
+  commission: {
+    base_commission: number;
+    bonus_commission: number;
+    total_commission: number;
+  };
+  deals: {
+    total_converted: number;
+    total_sales_value: number;
+  };
 }
 
 export interface CreateLeadData {
@@ -90,14 +116,17 @@ export interface CreateLeadData {
   exportTo?: string;
   exportToCountry?: string;
   quantity?: number;
-  price: number;
+  sellingPrice?: number;
+  costPrice?: number;
   priority: 'high' | 'medium' | 'low';
+  category?: LeadCategory;
   notes?: string;
   assignedTo?: number;
 }
 
 export interface UpdateLeadData extends Partial<CreateLeadData> {
-  status?: 'new' | 'converted' | 'not_converted';
+  status?: 'new' | 'contacted' | 'converted' | 'not_converted';
+  category?: LeadCategory;
   notConvertedReason?: string;
 }
 
@@ -138,6 +167,7 @@ export const leadsService = {
       lead_name: data.leadName,
       customer_id: data.customerId,
       status: 'new',
+      category: data.category || null,
       source: data.source,
       car_company: data.carCompany,
       model: data.model,
@@ -153,7 +183,8 @@ export const leadsService = {
       export_to: data.exportTo || '',
       export_to_country: data.exportToCountry || '',
       quantity: data.quantity || 1,
-      price: data.price,
+      selling_price: data.sellingPrice,
+      cost_price: data.costPrice,
       priority: data.priority,
       notes: data.notes || '',
       assigned_to: data.assignedTo,
@@ -170,6 +201,7 @@ export const leadsService = {
     if (data.leadName) updateData.lead_name = data.leadName;
     if (data.customerId) updateData.customer_id = data.customerId;
     if (data.status) updateData.status = data.status;
+    if (data.category) updateData.category = data.category;
     if (data.source) updateData.source = data.source;
     if (data.carCompany) updateData.car_company = data.carCompany;
     if (data.model) updateData.model = data.model;
@@ -185,7 +217,8 @@ export const leadsService = {
     if (data.exportTo !== undefined) updateData.export_to = data.exportTo;
     if (data.exportToCountry !== undefined) updateData.export_to_country = data.exportToCountry;
     if (data.quantity !== undefined) updateData.quantity = data.quantity;
-    if (data.price !== undefined) updateData.price = data.price;
+    if (data.sellingPrice !== undefined) updateData.selling_price = data.sellingPrice;
+    if (data.costPrice !== undefined) updateData.cost_price = data.costPrice;
     if (data.priority) updateData.priority = data.priority;
     if (data.notes !== undefined) updateData.notes = data.notes;
     if (data.notConvertedReason) updateData.not_converted_reason = data.notConvertedReason;
@@ -226,6 +259,16 @@ export const leadsService = {
   async exportLeads(filters?: LeadFilters): Promise<any[]> {
     const response = await axios.get<{ data: any[] }>('/api/leads-export', {
       params: filters,
+    });
+    return response.data.data;
+  },
+
+  /**
+   * Get performance statistics
+   */
+  async getPerformance(userId?: number): Promise<PerformanceStatistics> {
+    const response = await axios.get<{ data: PerformanceStatistics }>('/api/leads-performance', {
+      params: userId ? { user_id: userId } : {},
     });
     return response.data.data;
   },

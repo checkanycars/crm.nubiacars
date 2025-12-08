@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\LeadCategory;
 use App\LeadPriority;
 use App\LeadStatus;
 use App\Models\User;
@@ -28,6 +29,7 @@ class LeadFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->phoneNumber(),
             'status' => fake()->randomElement(LeadStatus::cases())->value,
+            'category' => fake()->optional()->randomElement(LeadCategory::cases())?->value,
             'source' => fake()->randomElement($sources),
             'car_company' => fake()->randomElement($carCompanies),
             'model' => fake()->word().' '.fake()->randomElement(['Sedan', 'SUV', 'Coupe', 'Hatchback']),
@@ -42,7 +44,8 @@ class LeadFactory extends Factory
             'steering_side' => fake()->optional()->randomElement(['Left', 'Right']),
             'export_to' => fake()->optional()->randomElement(['UAE', 'KSA', 'Kuwait', 'Oman', 'Qatar', 'Bahrain']),
             'quantity' => fake()->numberBetween(1, 10),
-            'price' => fake()->randomFloat(2, 5000, 150000),
+            'selling_price' => fake()->randomFloat(2, 10000, 200000),
+            'cost_price' => fake()->randomFloat(2, 5000, 150000),
             'notes' => fake()->optional()->sentence(10),
             'priority' => fake()->randomElement(LeadPriority::cases())->value,
             'not_converted_reason' => null,
@@ -58,6 +61,17 @@ class LeadFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => LeadStatus::New->value,
+            'not_converted_reason' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the lead is contacted.
+     */
+    public function contacted(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => LeadStatus::Contacted->value,
             'not_converted_reason' => null,
         ]);
     }

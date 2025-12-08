@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Lead routes
     Route::apiResource('leads', LeadController::class);
     Route::get('/leads-statistics', [LeadController::class, 'statistics']);
+    Route::get('/leads-performance', [LeadController::class, 'performance']);
     Route::post('/leads-bulk-destroy', [LeadController::class, 'bulkDestroy']);
     Route::get('/leads-export', [LeadController::class, 'export']);
     Route::patch('/leads/{lead}/deactivate', [LeadController::class, 'deactivate']);
@@ -64,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // User management routes (Manager only - authorization checked in controller)
     Route::get('/users-statistics', [UserController::class, 'statistics']);
     Route::get('/users-sales-list', [UserController::class, 'salesList']);
+    Route::get('/users-assignable-list', [UserController::class, 'assignableList']);
     Route::post('/users-bulk-destroy', [UserController::class, 'bulkDestroy']);
     Route::apiResource('users', UserController::class);
 });
