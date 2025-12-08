@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\CarBrandController;
 use App\Http\Controllers\Api\CarModelController;
 use App\Http\Controllers\Api\CarTrimController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\ExportCountryController;
 use App\Http\Controllers\Api\LeadController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -38,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/leads-statistics', [LeadController::class, 'statistics']);
     Route::post('/leads-bulk-destroy', [LeadController::class, 'bulkDestroy']);
     Route::get('/leads-export', [LeadController::class, 'export']);
+    Route::patch('/leads/{lead}/deactivate', [LeadController::class, 'deactivate']);
+    Route::patch('/leads/{lead}/activate', [LeadController::class, 'activate']);
 
     // Customer routes
     Route::apiResource('customers', CustomerController::class);
@@ -46,4 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('car-brands', CarBrandController::class);
     Route::apiResource('car-models', CarModelController::class);
     Route::apiResource('car-trims', CarTrimController::class);
+
+    // Export countries routes
+    Route::apiResource('export-countries', ExportCountryController::class);
 });

@@ -98,4 +98,17 @@ export const customersService = {
   async deleteCustomer(id: number): Promise<void> {
     await axios.delete(`/api/customers/${id}`);
   },
+
+  /**
+   * Search customers by name, email, or phone
+   */
+  async searchCustomers(searchTerm: string, perPage = 50): Promise<Customer[]> {
+    const response = await axios.get<PaginatedCustomersResponse>('/api/customers', {
+      params: {
+        search: searchTerm,
+        per_page: perPage,
+      },
+    });
+    return response.data.data;
+  },
 };

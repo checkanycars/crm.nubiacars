@@ -18,7 +18,13 @@ class LeadController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Lead::query()->with('assignedUser');
+        $query = Lead::query()->with(['assignedUser', 'customer']);
+
+        // Filter by active status (only show active leads by default)
+        // Allow viewing inactive leads with ?include_inactive=true parameter
+        if (! $request->boolean('include_inactive')) {
+            $query->where('is_active', true);
+        }
 
         // Filter by status
         if ($request->has('status')) {
@@ -40,14 +46,16 @@ class LeadController extends Controller
             $query->where('source', $request->source);
         }
 
-        // Search by lead name, contact name, email, or phone
+        // Search by lead name or customer name
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('lead_name', 'like', "%{$search}%")
-                    ->orWhere('contact_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
+                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                        $customerQuery->where('full_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -94,7 +102,7 @@ class LeadController extends Controller
     {
         $lead = Lead::create($request->validated());
 
-        $lead->load('assignedUser');
+        $lead->load(['assignedUser', 'customer']);
 
         return response()->json([
             'message' => 'Lead created successfully.',
@@ -107,7 +115,7 @@ class LeadController extends Controller
      */
     public function show(Lead $lead): JsonResponse
     {
-        $lead->load('assignedUser');
+        $lead->load(['assignedUser', 'customer']);
 
         return response()->json([
             'data' => new LeadResource($lead),
@@ -121,7 +129,7 @@ class LeadController extends Controller
     {
         $lead->update($request->validated());
 
-        $lead->load('assignedUser');
+        $lead->load(['assignedUser', 'customer']);
 
         return response()->json([
             'message' => 'Lead updated successfully.',
@@ -147,13 +155,13 @@ class LeadController extends Controller
     public function statistics(): JsonResponse
     {
         $stats = [
-            'total' => Lead::count(),
-            'new' => Lead::where('status', 'new')->count(),
-            'converted' => Lead::where('status', 'converted')->count(),
-            'not_converted' => Lead::where('status', 'not_converted')->count(),
-            'high_priority' => Lead::where('priority', 'high')->count(),
-            'medium_priority' => Lead::where('priority', 'medium')->count(),
-            'low_priority' => Lead::where('priority', 'low')->count(),
+            'total' => Lead::where('is_active', true)->count(),
+            'new' => Lead::where('is_active', true)->where('status', 'new')->count(),
+            'converted' => Lead::where('is_active', true)->where('status', 'converted')->count(),
+            'not_converted' => Lead::where('is_active', true)->where('status', 'not_converted')->count(),
+            'high_priority' => Lead::where('is_active', true)->where('priority', 'high')->count(),
+            'medium_priority' => Lead::where('is_active', true)->where('priority', 'medium')->count(),
+            'low_priority' => Lead::where('is_active', true)->where('priority', 'low')->count(),
         ];
 
         return response()->json([
@@ -171,7 +179,7 @@ class LeadController extends Controller
             'ids.*' => ['required', 'integer', 'exists:leads,id'],
         ]);
 
-        $count = Lead::whereIn('id', $request->ids)->delete();
+        $count = Lead::where('is_active', true)->whereIn('id', $request->ids)->delete();
 
         return response()->json([
             'message' => "{$count} lead(s) deleted successfully.",
@@ -183,15 +191,15 @@ class LeadController extends Controller
      */
     public function export(Request $request): JsonResponse
     {
-        $leads = Lead::query()->with('assignedUser')->get();
+        $leads = Lead::query()->where('is_active', true)->with(['assignedUser', 'customer'])->get();
 
         $data = $leads->map(function ($lead) {
             return [
                 'ID' => $lead->id,
                 'Lead Name' => $lead->lead_name,
-                'Contact Name' => $lead->contact_name,
-                'Email' => $lead->email,
-                'Phone' => $lead->phone,
+                'Customer Name' => $lead->customer?->full_name ?? 'N/A',
+                'Customer Email' => $lead->customer?->email ?? 'N/A',
+                'Customer Phone' => $lead->customer?->phone ?? 'N/A',
                 'Status' => $lead->status->value,
                 'Source' => $lead->source,
                 'Car Company' => $lead->car_company,
@@ -217,6 +225,32 @@ class LeadController extends Controller
 
         return response()->json([
             'data' => $data,
+        ], 200);
+    }
+
+    /**
+     * Deactivate a lead (hide from frontend).
+     */
+    public function deactivate(Lead $lead): JsonResponse
+    {
+        $lead->update(['is_active' => false]);
+
+        return response()->json([
+            'message' => 'Lead deactivated successfully.',
+            'data' => new LeadResource($lead),
+        ], 200);
+    }
+
+    /**
+     * Activate a lead (show in frontend).
+     */
+    public function activate(Lead $lead): JsonResponse
+    {
+        $lead->update(['is_active' => true]);
+
+        return response()->json([
+            'message' => 'Lead activated successfully.',
+            'data' => new LeadResource($lead),
         ], 200);
     }
 }

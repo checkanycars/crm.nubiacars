@@ -26,9 +26,7 @@ class UpdateLeadRequest extends FormRequest
     {
         return [
             'lead_name' => ['sometimes', 'string', 'max:255'],
-            'contact_name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'email', 'max:255'],
-            'phone' => ['sometimes', 'string', 'max:20'],
+            'customer_id' => ['sometimes', 'integer', 'exists:customers,id'],
             'status' => ['sometimes', 'string', Rule::enum(LeadStatus::class)],
             'source' => ['sometimes', 'string', 'max:255'],
             'car_company' => ['sometimes', 'string', 'max:255'],
@@ -50,6 +48,7 @@ class UpdateLeadRequest extends FormRequest
             'priority' => ['sometimes', 'string', Rule::enum(LeadPriority::class)],
             'not_converted_reason' => ['nullable', 'string'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -62,9 +61,8 @@ class UpdateLeadRequest extends FormRequest
     {
         return [
             'lead_name.string' => 'Lead name must be a valid string.',
-            'contact_name.string' => 'Contact name must be a valid string.',
-            'email.email' => 'Please provide a valid email address.',
-            'phone.string' => 'Phone number must be a valid string.',
+            'customer_id.integer' => 'Customer ID must be a valid number.',
+            'customer_id.exists' => 'The selected customer does not exist.',
             'status.string' => 'Status must be a valid string.',
             'source.string' => 'Source must be a valid string.',
             'car_company.string' => 'Car company must be a valid string.',

@@ -17,9 +17,19 @@ class LeadResource extends JsonResource
         return [
             'id' => $this->id,
             'leadName' => $this->lead_name,
-            'contactName' => $this->contact_name,
-            'email' => $this->email,
-            'phone' => $this->phone,
+            'customerId' => $this->customer_id,
+            'contactName' => $this->customer?->full_name,
+            'email' => $this->customer?->email,
+            'phone' => $this->customer?->phone,
+            'customer' => $this->whenLoaded('customer', function () {
+                return [
+                    'id' => $this->customer->id,
+                    'fullName' => $this->customer->full_name,
+                    'email' => $this->customer->email,
+                    'phone' => $this->customer->phone,
+                    'status' => $this->customer->status->value,
+                ];
+            }),
             'status' => $this->status->value,
             'source' => $this->source,
             'carCompany' => $this->car_company,
@@ -41,6 +51,7 @@ class LeadResource extends JsonResource
             'priority' => $this->priority->value,
             'notConvertedReason' => $this->not_converted_reason,
             'assignedTo' => $this->assigned_to,
+            'isActive' => $this->is_active,
             'assignedUser' => $this->whenLoaded('assignedUser', function () {
                 return [
                     'id' => $this->assignedUser->id,

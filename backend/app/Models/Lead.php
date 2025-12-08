@@ -20,9 +20,7 @@ class Lead extends Model
      */
     protected $fillable = [
         'lead_name',
-        'contact_name',
-        'email',
-        'phone',
+        'customer_id',
         'status',
         'source',
         'car_company',
@@ -44,6 +42,7 @@ class Lead extends Model
         'priority',
         'not_converted_reason',
         'assigned_to',
+        'is_active',
     ];
 
     /**
@@ -59,9 +58,18 @@ class Lead extends Model
             'model_year' => 'integer',
             'quantity' => 'integer',
             'price' => 'decimal:2',
+            'is_active' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Get the customer associated with this lead.
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     /**
@@ -102,5 +110,13 @@ class Lead extends Model
     public function isHighPriority(): bool
     {
         return $this->priority === LeadPriority::High;
+    }
+
+    /**
+     * Check if lead is active.
+     */
+    public function isActive(): bool
+    {
+        return $this->is_active === true;
     }
 }

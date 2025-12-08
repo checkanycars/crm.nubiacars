@@ -47,6 +47,7 @@ class LeadFactory extends Factory
             'priority' => fake()->randomElement(LeadPriority::cases())->value,
             'not_converted_reason' => null,
             'assigned_to' => User::query()->where('role', 'sales')->inRandomOrder()->first()?->id,
+            'is_active' => true,
         ];
     }
 
@@ -117,6 +118,16 @@ class LeadFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'priority' => LeadPriority::Low->value,
+        ]);
+    }
+
+    /**
+     * Indicate that the lead is inactive.
+     */
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => false,
         ]);
     }
 }

@@ -5,8 +5,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { leadsService, type Lead, type CreateLeadData, type UpdateLeadData } from '../../services/leadsService';
 import { CarBrandSelect } from '@/components/ui/car-brand-select';
 import { CarModelSelect } from '@/components/ui/car-model-select';
+import { ExportCountrySelect } from '@/components/ui/export-country-select';
+import { CustomerSelect } from '@/components/ui/customer-select';
 import { carBrandsService } from '../../services/carBrandsService';
 import { carModelsService } from '../../services/carModelsService';
+import { customersService, type CreateCustomerData } from '../../services/customersService';
 
 export const Route = createFileRoute('/dashboard/leads')({
   component: LeadsKanbanPage,
@@ -100,6 +103,7 @@ function LeadsKanbanPage() {
   const [formData, setFormData] = useState({
     leadName: '',
     contactName: '',
+    customerId: undefined as number | undefined,
     email: '',
     phone: '',
     carBrandId: undefined as number | undefined,
@@ -118,12 +122,22 @@ function LeadsKanbanPage() {
     steeringSide: 'Left',
     exportTo: '',
     exportToCountry: '',
+    exportCountryId: undefined as number | undefined,
     quantity: 1,
     price: 0,
     source: 'Website',
     priority: 'medium' as 'high' | 'medium' | 'low',
     notes: '',
     assignedTo: undefined as number | undefined,
+  });
+
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [customerFormData, setCustomerFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    status: 'lead' as 'active' | 'inactive' | 'lead',
+    notes: '',
   });
 
   const columns: { id: LeadStatus; title: string; color: string; bgColor: string }[] = [
@@ -278,16 +292,111 @@ function LeadsKanbanPage() {
     }));
   };
 
+  // Handle export country selection
+  const handleCountryChange = (countryId: number | string, countryName?: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      exportCountryId: countryId ? Number(countryId) : undefined,
+      exportToCountry: countryName || '',
+    }));
+  };
+
+  // Handle customer selection
+  const handleCustomerChange = async (customerId: number | string, customerName?: string) => {
+    // Find the customer to get their details
+    if (customerId && typeof customerId === 'number') {
+      try {
+        const customer = await customersService.getCustomer(customerId);
+        setFormData((prev) => ({
+          ...prev,
+          customerId: customerId,
+          contactName: customer.fullName,
+          email: customer.email || prev.email,
+          phone: customer.phone || prev.phone,
+        }));
+      } catch (error) {
+        console.error('Failed to fetch customer details:', error);
+        setFormData((prev) => ({
+          ...prev,
+          customerId: customerId as number,
+          contactName: customerName || '',
+        }));
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        customerId: undefined,
+        contactName: customerName || '',
+      }));
+    }
+  };
+
+  // Handle opening the Add Customer modal
+  const handleOpenAddCustomer = () => {
+    setShowAddCustomerModal(true);
+  };
+
+  // Handle customer form change
+  const handleCustomerFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCustomerFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handle customer creation
+  const handleAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const customerData: CreateCustomerData = {
+        fullName: customerFormData.fullName,
+        email: customerFormData.email,
+        phone: customerFormData.phone,
+        status: customerFormData.status,
+        notes: customerFormData.notes,
+      };
+
+      const newCustomer = await customersService.createCustomer(customerData);
+
+      // Auto-select the newly created customer
+      setFormData((prev) => ({
+        ...prev,
+        customerId: newCustomer.id,
+        contactName: newCustomer.fullName,
+        email: newCustomer.email,
+        phone: newCustomer.phone,
+      }));
+
+      // Reset and close modal
+      setCustomerFormData({
+        fullName: '',
+        email: '',
+        phone: '',
+        status: 'lead',
+        notes: '',
+      });
+      setShowAddCustomerModal(false);
+
+      alert('Customer created successfully!');
+    } catch (err: any) {
+      console.error('Failed to create customer:', err);
+      alert(err?.response?.data?.message || 'Failed to create customer');
+    }
+  };
+
   // Handle edit lead
   const handleEditLead = async (lead: Lead) => {
     setEditingLead(lead);
-    
+
     // Try to look up brand and model IDs from the database
     let brandId: number | undefined = undefined;
     let brandName = '';
     let companyName = '';
     let modelId: number | undefined = undefined;
     let modelName = '';
+    let countryId: number | undefined = undefined;
+    let customerId: number | undefined = undefined;
 
     try {
       // Look up brand by name
@@ -314,14 +423,38 @@ function LeadsKanbanPage() {
           }
         }
       }
+
+      // Look up export country by name
+      if (lead.exportToCountry) {
+        const { exportCountriesService } = await import('../../services/exportCountriesService');
+        const countries = await exportCountriesService.searchCountries(lead.exportToCountry, 10);
+        const matchingCountry = countries.find(
+          c => c.name.toLowerCase() === (lead.exportToCountry || '').toLowerCase()
+        );
+        if (matchingCountry) {
+          countryId = matchingCountry.id;
+        }
+      }
+
+      // Look up customer by name
+      if (lead.contactName) {
+        const customers = await customersService.searchCustomers(lead.contactName, 10);
+        const matchingCustomer = customers.find(
+          c => c.fullName.toLowerCase() === lead.contactName.toLowerCase()
+        );
+        if (matchingCustomer) {
+          customerId = matchingCustomer.id;
+        }
+      }
     } catch (error) {
-      console.warn('Failed to look up brand/model IDs:', error);
+      console.warn('Failed to look up brand/model/country/customer IDs:', error);
       // Continue with undefined IDs if lookup fails
     }
 
     setFormData({
       leadName: lead.leadName,
       contactName: lead.contactName,
+      customerId: customerId,
       email: lead.email,
       phone: lead.phone,
       carBrandId: brandId,
@@ -340,6 +473,7 @@ function LeadsKanbanPage() {
       steeringSide: lead.steeringSide || 'Left',
       exportTo: lead.exportTo || '',
       exportToCountry: lead.exportToCountry || '',
+      exportCountryId: countryId,
       quantity: lead.quantity || 1,
       price: lead.price,
       source: lead.source,
@@ -359,9 +493,7 @@ function LeadsKanbanPage() {
     try {
       const updateData: UpdateLeadData = {
         leadName: formData.leadName,
-        contactName: formData.contactName,
-        email: formData.email,
-        phone: formData.phone,
+        customerId: formData.customerId,
         source: formData.source,
         carCompany: formData.carBrand || formData.carCompany,
         model: formData.model,
@@ -389,11 +521,12 @@ function LeadsKanbanPage() {
       );
       setShowEditModal(false);
       setEditingLead(null);
-      
+
       // Reset form
       setFormData({
         leadName: '',
         contactName: '',
+        customerId: undefined,
         email: '',
         phone: '',
         carBrandId: undefined,
@@ -407,15 +540,16 @@ function LeadsKanbanPage() {
         interiorColour: '',
         exteriorColour: '',
         gearBox: '',
-        carType: 'new',
+        carType: 'new' as 'new' | 'used',
         fuelTank: '',
         steeringSide: 'Left',
         exportTo: '',
         exportToCountry: '',
+        exportCountryId: undefined,
         quantity: 1,
         price: 0,
         source: 'Website',
-        priority: 'medium',
+        priority: 'medium' as 'high' | 'medium' | 'low',
         notes: '',
         assignedTo: undefined,
       });
@@ -433,9 +567,7 @@ function LeadsKanbanPage() {
 
       const createData: CreateLeadData = {
         leadName: formData.leadName,
-        contactName: formData.contactName,
-        email: formData.email,
-        phone: formData.phone,
+        customerId: formData.customerId!,
         source: formData.source,
         carCompany: formData.carBrand || formData.carCompany,
         model: formData.model,
@@ -464,6 +596,7 @@ function LeadsKanbanPage() {
       setFormData({
         leadName: '',
         contactName: '',
+        customerId: undefined,
         email: '',
         phone: '',
         carBrandId: undefined,
@@ -482,6 +615,7 @@ function LeadsKanbanPage() {
         steeringSide: 'Left',
         exportTo: '',
         exportToCountry: '',
+        exportCountryId: undefined,
         quantity: 1,
         price: 0,
         source: 'Website',
@@ -768,7 +902,7 @@ function LeadsKanbanPage() {
                         <span className="font-medium">Quantity:</span>
                         <span>{lead.quantity || 1}</span>
                       </div>
-                      
+
                       {/* Export To */}
                       {lead.exportTo && (
                         <div className="flex items-center gap-2 text-xs text-gray-600">
@@ -883,18 +1017,18 @@ function LeadsKanbanPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="contactName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Name <span className="text-red-500">*</span>
+                    <label htmlFor="customerId" className="block text-sm font-medium text-gray-700 mb-1">
+                      Customer Name <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      id="contactName"
-                      name="contactName"
-                      value={formData.contactName}
-                      onChange={handleFormChange}
+                    <CustomerSelect
+                      id="customerId"
+                      name="customerId"
+                      value={formData.customerId}
+                      onChange={handleCustomerChange}
+                      onAddNew={handleOpenAddCustomer}
+                      placeholder="Search and select customer..."
                       required
-                      placeholder="e.g., John Doe"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -911,7 +1045,7 @@ function LeadsKanbanPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                      Email Address <span className="text-red-500">*</span>
+                      Email Address
                     </label>
                     <input
                       type="email"
@@ -919,14 +1053,13 @@ function LeadsKanbanPage() {
                       name="email"
                       value={formData.email}
                       onChange={handleFormChange}
-                      required
                       placeholder="john.doe@example.com"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number <span className="text-red-500">*</span>
+                      Phone Number
                     </label>
                     <input
                       type="tel"
@@ -934,7 +1067,6 @@ function LeadsKanbanPage() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleFormChange}
-                      required
                       placeholder="+1 234-567-8900"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
@@ -1068,15 +1200,16 @@ function LeadsKanbanPage() {
                     <label htmlFor="gearBox" className="block text-sm font-medium text-gray-700 mb-1">
                       Gear Box
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="gearBox"
                       name="gearBox"
                       value={formData.gearBox}
                       onChange={handleFormChange}
-                      placeholder="e.g., Automatic, Manual, CVT"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                    >
+                      <option value="automatic">Automatic</option>
+                      <option value="manual">Manual</option>
+                    </select>
                   </div>
                   <div>
                     <label htmlFor="carType" className="block text-sm font-medium text-gray-700 mb-1">
@@ -1141,22 +1274,7 @@ function LeadsKanbanPage() {
                       <option value="DUCAMZ">DUCAMZ</option>
                     </select>
                   </div>
-                  {formData.exportTo === 'Outside GCC' && (
-                    <div>
-                      <label htmlFor="exportToCountry" className="block text-sm font-medium text-gray-700 mb-1">
-                        Country
-                      </label>
-                      <input
-                        type="text"
-                        id="exportToCountry"
-                        name="exportToCountry"
-                        value={formData.exportToCountry}
-                        onChange={handleFormChange}
-                        placeholder="e.g., USA, UK, Japan"
-                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  )}
+
                   <div>
                     <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
                       Quantity
@@ -1172,6 +1290,22 @@ function LeadsKanbanPage() {
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
+                  {formData.exportTo === 'Outside GCC' && (
+                    <div>
+                      <label htmlFor="exportCountryId" className="block text-sm font-medium text-gray-700 mb-1">
+                        Country <span className="text-red-500">*</span>
+                      </label>
+                      <ExportCountrySelect
+                        id="exportCountryId"
+                        name="exportCountryId"
+                        value={formData.exportCountryId}
+                        onChange={handleCountryChange}
+                        placeholder="Search and select country..."
+                        required
+                        className="w-full"
+                      />
+                    </div>
+                  )}
                   <div className="sm:col-span-2">
                     <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
                       Price ($) <span className="text-red-500">*</span>
@@ -1343,18 +1477,18 @@ function LeadsKanbanPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="edit-contactName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Name <span className="text-red-500">*</span>
+                    <label htmlFor="edit-customerId" className="block text-sm font-medium text-gray-700 mb-1">
+                      Customer Name <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      id="edit-contactName"
-                      name="contactName"
-                      value={formData.contactName}
-                      onChange={handleFormChange}
+                    <CustomerSelect
+                      id="edit-customerId"
+                      name="customerId"
+                      value={formData.customerId}
+                      onChange={handleCustomerChange}
+                      onAddNew={handleOpenAddCustomer}
+                      placeholder="Search and select customer..."
                       required
-                      placeholder="e.g., John Doe"
-                      className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -1528,15 +1662,16 @@ function LeadsKanbanPage() {
                     <label htmlFor="edit-gearBox" className="block text-sm font-medium text-gray-700 mb-1">
                       Gear Box
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="edit-gearBox"
                       name="gearBox"
                       value={formData.gearBox}
                       onChange={handleFormChange}
-                      placeholder="e.g., Automatic, Manual, CVT"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                    >
+                      <option value="automatic">Automatic</option>
+                      <option value="manual">Manual</option>
+                    </select>
                   </div>
                   <div>
                     <label htmlFor="edit-carType" className="block text-sm font-medium text-gray-700 mb-1">
@@ -1584,7 +1719,7 @@ function LeadsKanbanPage() {
                   </div>
                   <div>
                     <label htmlFor="edit-exportTo" className="block text-sm font-medium text-gray-700 mb-1">
-                      Export To
+                      Export
                     </label>
                     <select
                       id="edit-exportTo"
@@ -1601,22 +1736,7 @@ function LeadsKanbanPage() {
                       <option value="DUCAMZ">DUCAMZ</option>
                     </select>
                   </div>
-                  {formData.exportTo === 'Outside GCC' && (
-                    <div>
-                      <label htmlFor="edit-exportToCountry" className="block text-sm font-medium text-gray-700 mb-1">
-                        Country
-                      </label>
-                      <input
-                        type="text"
-                        id="edit-exportToCountry"
-                        name="exportToCountry"
-                        value={formData.exportToCountry}
-                        onChange={handleFormChange}
-                        placeholder="e.g., USA, UK, Japan"
-                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  )}
+
                   <div>
                     <label htmlFor="edit-quantity" className="block text-sm font-medium text-gray-700 mb-1">
                       Quantity
@@ -1632,6 +1752,22 @@ function LeadsKanbanPage() {
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
+                  {formData.exportTo === 'Outside GCC' && (
+                    <div>
+                      <label htmlFor="edit-exportCountryId" className="block text-sm font-medium text-gray-700 mb-1">
+                        Country <span className="text-red-500">*</span>
+                      </label>
+                      <ExportCountrySelect
+                        id="edit-exportCountryId"
+                        name="exportCountryId"
+                        value={formData.exportCountryId}
+                        onChange={handleCountryChange}
+                        placeholder="Search and select country..."
+                        required
+                        className="w-full"
+                      />
+                    </div>
+                  )}
                   <div className="sm:col-span-2">
                     <label htmlFor="edit-price" className="block text-sm font-medium text-gray-700 mb-1">
                       Price ($) <span className="text-red-500">*</span>
@@ -1817,7 +1953,125 @@ function LeadsKanbanPage() {
           </div>
         </div>
       )}
+
+      {/* Add Customer Modal */}
+      {showAddCustomerModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h3 className="text-xl font-semibold text-gray-900">Add New Customer</h3>
+              <button
+                onClick={() => setShowAddCustomerModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCustomer} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="customer-fullName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="customer-fullName"
+                    name="fullName"
+                    value={customerFormData.fullName}
+                    onChange={handleCustomerFormChange}
+                    required
+                    placeholder="e.g., John Doe"
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="customer-email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    id="customer-email"
+                    name="email"
+                    value={customerFormData.email}
+                    onChange={handleCustomerFormChange}
+                    required
+                    placeholder="e.g., john@example.com"
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="customer-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    id="customer-phone"
+                    name="phone"
+                    value={customerFormData.phone}
+                    onChange={handleCustomerFormChange}
+                    required
+                    placeholder="e.g., +971 50 123 4567"
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="customer-status" className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    id="customer-status"
+                    name="status"
+                    value={customerFormData.status}
+                    onChange={handleCustomerFormChange}
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="lead">Lead</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="customer-notes" className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    id="customer-notes"
+                    name="notes"
+                    value={customerFormData.notes}
+                    onChange={handleCustomerFormChange}
+                    rows={3}
+                    placeholder="Additional notes about the customer..."
+                    className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomerModal(false)}
+                  className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                >
+                  Add Customer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

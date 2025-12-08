@@ -3,9 +3,17 @@ import axios from '../lib/axios';
 export interface Lead {
   id: number;
   leadName: string;
+  customerId?: number;
   contactName: string;
   email: string;
   phone: string;
+  customer?: {
+    id: number;
+    fullName: string;
+    email: string;
+    phone: string;
+    status: string;
+  };
   status: 'new' | 'converted' | 'not_converted';
   source: string;
   carCompany: string;
@@ -66,9 +74,7 @@ export interface LeadStatistics {
 
 export interface CreateLeadData {
   leadName: string;
-  contactName: string;
-  email: string;
-  phone: string;
+  customerId: number;
   source: string;
   carCompany: string;
   model: string;
@@ -130,9 +136,7 @@ export const leadsService = {
   async createLead(data: CreateLeadData): Promise<Lead> {
     const response = await axios.post<{ message: string; data: Lead }>('/api/leads', {
       lead_name: data.leadName,
-      contact_name: data.contactName,
-      email: data.email,
-      phone: data.phone,
+      customer_id: data.customerId,
       status: 'new',
       source: data.source,
       car_company: data.carCompany,
@@ -164,9 +168,7 @@ export const leadsService = {
     const updateData: Record<string, any> = {};
 
     if (data.leadName) updateData.lead_name = data.leadName;
-    if (data.contactName) updateData.contact_name = data.contactName;
-    if (data.email) updateData.email = data.email;
-    if (data.phone) updateData.phone = data.phone;
+    if (data.customerId) updateData.customer_id = data.customerId;
     if (data.status) updateData.status = data.status;
     if (data.source) updateData.source = data.source;
     if (data.carCompany) updateData.car_company = data.carCompany;

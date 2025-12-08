@@ -26,9 +26,7 @@ class StoreLeadRequest extends FormRequest
     {
         return [
             'lead_name' => ['required', 'string', 'max:255'],
-            'contact_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
-            'phone' => ['required', 'string', 'max:20'],
+            'customer_id' => ['required', 'integer', 'exists:customers,id'],
             'status' => ['required', 'string', Rule::enum(LeadStatus::class)],
             'source' => ['required', 'string', 'max:255'],
             'car_company' => ['required', 'string', 'max:255'],
@@ -62,10 +60,8 @@ class StoreLeadRequest extends FormRequest
     {
         return [
             'lead_name.required' => 'Lead name is required.',
-            'contact_name.required' => 'Contact name is required.',
-            'email.required' => 'Email address is required.',
-            'email.email' => 'Please provide a valid email address.',
-            'phone.required' => 'Phone number is required.',
+            'customer_id.required' => 'Customer is required.',
+            'customer_id.exists' => 'The selected customer does not exist.',
             'status.required' => 'Lead status is required.',
             'source.required' => 'Lead source is required.',
             'car_company.required' => 'Car company is required.',
