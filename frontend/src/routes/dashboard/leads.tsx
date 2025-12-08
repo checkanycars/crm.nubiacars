@@ -1500,7 +1500,7 @@ function LeadsKanbanPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700 mb-1">
-                      Email Address <span className="text-red-500">*</span>
+                      Email Address
                     </label>
                     <input
                       type="email"
@@ -1508,14 +1508,13 @@ function LeadsKanbanPage() {
                       name="email"
                       value={formData.email}
                       onChange={handleFormChange}
-                      required
                       placeholder="john.doe@example.com"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                   <div>
                     <label htmlFor="edit-phone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Phone Number <span className="text-red-500">*</span>
+                      Phone Number
                     </label>
                     <input
                       type="tel"
@@ -1523,7 +1522,6 @@ function LeadsKanbanPage() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleFormChange}
-                      required
                       placeholder="+1 234-567-8900"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
