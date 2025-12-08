@@ -1225,15 +1225,19 @@ function LeadsKanbanPage() {
                     <label htmlFor="fuelTank" className="block text-sm font-medium text-gray-700 mb-1">
                       Fuel Tank
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="fuelTank"
                       name="fuelTank"
                       value={formData.fuelTank}
                       onChange={handleFormChange}
-                      placeholder="e.g., 50L, 60L, 70L"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                    >
+                      <option value="">Select fuel type</option>
+                      <option value="Diesel">Diesel</option>
+                      <option value="Petrol">Petrol</option>
+                      <option value="Hybrid">Hybrid</option>
+                      <option value="Electric">Electric</option>
+                    </select>
                   </div>
                   <div>
                     <label htmlFor="steeringSide" className="block text-sm font-medium text-gray-700 mb-1">
@@ -1685,15 +1689,19 @@ function LeadsKanbanPage() {
                     <label htmlFor="edit-fuelTank" className="block text-sm font-medium text-gray-700 mb-1">
                       Fuel Tank
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="edit-fuelTank"
                       name="fuelTank"
                       value={formData.fuelTank}
                       onChange={handleFormChange}
-                      placeholder="e.g., 50L, 60L, 70L"
                       className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                    >
+                      <option value="">Select fuel type</option>
+                      <option value="Diesel">Diesel</option>
+                      <option value="Petrol">Petrol</option>
+                      <option value="Hybrid">Hybrid</option>
+                      <option value="Electric">Electric</option>
+                    </select>
                   </div>
                   <div>
                     <label htmlFor="edit-steeringSide" className="block text-sm font-medium text-gray-700 mb-1">
