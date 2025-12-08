@@ -26,6 +26,12 @@ class LeadController extends Controller
             $query->where('is_active', true);
         }
 
+        // Filter by logged-in user if they are a sales person
+        $user = $request->user();
+        if ($user && $user->isSales()) {
+            $query->where('assigned_to', $user->id);
+        }
+
         // Filter by status
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -152,16 +158,24 @@ class LeadController extends Controller
     /**
      * Get lead statistics.
      */
-    public function statistics(): JsonResponse
+    public function statistics(Request $request): JsonResponse
     {
+        $query = Lead::where('is_active', true);
+
+        // Filter by logged-in user if they are a sales person
+        $user = $request->user();
+        if ($user && $user->isSales()) {
+            $query->where('assigned_to', $user->id);
+        }
+
         $stats = [
-            'total' => Lead::where('is_active', true)->count(),
-            'new' => Lead::where('is_active', true)->where('status', 'new')->count(),
-            'converted' => Lead::where('is_active', true)->where('status', 'converted')->count(),
-            'not_converted' => Lead::where('is_active', true)->where('status', 'not_converted')->count(),
-            'high_priority' => Lead::where('is_active', true)->where('priority', 'high')->count(),
-            'medium_priority' => Lead::where('is_active', true)->where('priority', 'medium')->count(),
-            'low_priority' => Lead::where('is_active', true)->where('priority', 'low')->count(),
+            'total' => (clone $query)->count(),
+            'new' => (clone $query)->where('status', 'new')->count(),
+            'converted' => (clone $query)->where('status', 'converted')->count(),
+            'not_converted' => (clone $query)->where('status', 'not_converted')->count(),
+            'high_priority' => (clone $query)->where('priority', 'high')->count(),
+            'medium_priority' => (clone $query)->where('priority', 'medium')->count(),
+            'low_priority' => (clone $query)->where('priority', 'low')->count(),
         ];
 
         return response()->json([
@@ -191,7 +205,15 @@ class LeadController extends Controller
      */
     public function export(Request $request): JsonResponse
     {
-        $leads = Lead::query()->where('is_active', true)->with(['assignedUser', 'customer'])->get();
+        $query = Lead::query()->where('is_active', true)->with(['assignedUser', 'customer']);
+
+        // Filter by logged-in user if they are a sales person
+        $user = $request->user();
+        if ($user && $user->isSales()) {
+            $query->where('assigned_to', $user->id);
+        }
+
+        $leads = $query->get();
 
         $data = $leads->map(function ($lead) {
             return [

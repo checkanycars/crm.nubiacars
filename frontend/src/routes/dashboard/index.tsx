@@ -107,6 +107,14 @@ function DashboardIndexPage() {
         <p className="mt-1 text-sm text-gray-500">
           Welcome back, {user?.name || 'User'}! Here's what's happening today.
         </p>
+        {user?.role === 'sales' && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-blue-600">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Showing only your assigned leads and related customers</span>
+          </div>
+        )}
       </div>
 
       {/* Error Message */}
@@ -152,7 +160,7 @@ function DashboardIndexPage() {
       </div>
 
       {/* Two column layout */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className={`grid gap-6 ${user?.role === 'manager' ? 'lg:grid-cols-2' : 'lg:grid-cols-1'}`}>
         {/* Leads Overview */}
         <div className="rounded-lg bg-white shadow-sm border border-gray-200">
           <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -234,63 +242,65 @@ function DashboardIndexPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="rounded-lg bg-white shadow-sm border border-gray-200">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Quick Actions
-            </h2>
-          </div>
-          <div className="p-6 space-y-3">
-            <Button
-              variant="outline"
-              onClick={handleAddCustomer}
-              className="w-full flex items-center justify-between rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 h-auto hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <span className="flex items-center gap-3">
-                <span className="text-2xl">➕</span>
-                <span className="font-medium text-gray-900">Add New Customer</span>
-              </span>
-              <svg
-                className="h-5 w-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+        {/* Quick Actions - Only visible to managers */}
+        {user?.role === 'manager' && (
+          <div className="rounded-lg bg-white shadow-sm border border-gray-200">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Quick Actions
+              </h2>
+            </div>
+            <div className="p-6 space-y-3">
+              <Button
+                variant="outline"
+                onClick={handleAddCustomer}
+                className="w-full flex items-center justify-between rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 h-auto hover:border-blue-500 hover:bg-blue-50 transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </Button>
+                <span className="flex items-center gap-3">
+                  <span className="text-2xl">➕</span>
+                  <span className="font-medium text-gray-900">Add New Customer</span>
+                </span>
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </Button>
 
-            <Button
-              variant="outline"
-              onClick={handleCreateLead}
-              className="w-full flex items-center justify-between rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 h-auto hover:border-blue-500 hover:bg-blue-50 transition-colors"
-            >
-              <span className="flex items-center gap-3">
-                <span className="text-2xl">🎯</span>
-                <span className="font-medium text-gray-900">Create New Lead</span>
-              </span>
-              <svg
-                className="h-5 w-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              <Button
+                variant="outline"
+                onClick={handleCreateLead}
+                className="w-full flex items-center justify-between rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 h-auto hover:border-blue-500 hover:bg-blue-50 transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </Button>
+                <span className="flex items-center gap-3">
+                  <span className="text-2xl">🎯</span>
+                  <span className="font-medium text-gray-900">Create New Lead</span>
+                </span>
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

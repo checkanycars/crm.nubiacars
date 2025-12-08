@@ -70,4 +70,12 @@ class Customer extends Model
     {
         return $this->hasMany(CustomerDocument::class);
     }
+
+    /**
+     * Get the leads for the customer.
+     */
+    public function leads(): HasMany
+    {
+        return $this->hasMany(Lead::class);
+    }
 }

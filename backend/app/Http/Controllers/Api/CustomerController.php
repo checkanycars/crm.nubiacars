@@ -22,6 +22,15 @@ class CustomerController extends Controller
     {
         $query = Customer::query();
 
+        // Filter by logged-in user if they are a sales person
+        // Only show customers that have leads assigned to this sales person
+        $user = $request->user();
+        if ($user && $user->isSales()) {
+            $query->whereHas('leads', function ($q) use ($user) {
+                $q->where('assigned_to', $user->id);
+            });
+        }
+
         // Optionally load documents
         if ($request->get('with_documents')) {
             $query->with('documents');
