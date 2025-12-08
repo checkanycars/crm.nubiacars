@@ -112,13 +112,13 @@ function CustomersPage() {
     if (file.type !== 'application/pdf') {
       return 'Only PDF files are allowed';
     }
-    
+
     // Check file size (2MB = 2 * 1024 * 1024 bytes)
     const maxSize = 2 * 1024 * 1024;
     if (file.size > maxSize) {
       return 'File size must be less than 2MB';
     }
-    
+
     return null;
   };
 
@@ -224,10 +224,10 @@ function CustomersPage() {
         customerData,
         formData.documents.length > 0 ? formData.documents : undefined
       );
-      
+
       // Add to local state
       setCustomers((prev) => [newCustomer, ...prev]);
-      
+
       // Reset form and close modal
       setFormData({
         fullName: '',
@@ -239,7 +239,7 @@ function CustomersPage() {
       });
       setFileError(null);
       setShowAddModal(false);
-      
+
       // Show success message (you can use a toast notification library)
       alert('Customer created successfully!');
     } catch (err: any) {
@@ -330,10 +330,10 @@ function CustomersPage() {
       setIsLoading(true);
       setError(null);
       await customersService.deleteCustomer(id);
-      
+
       // Remove from local state
       setCustomers((prev) => prev.filter((c) => c.id !== id));
-      
+
       alert('Customer deleted successfully!');
     } catch (err: any) {
       console.error('Error deleting customer:', err);
@@ -439,7 +439,10 @@ function CustomersPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredCustomers.map((customer) => (
                 <tr key={customer.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 flex items-center gap-3 whitespace-nowrap">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-medium">
+                      {customer.fullName.charAt(0).toUpperCase()}
+                    </div>
                     <div className="text-sm font-medium text-gray-900">{customer.fullName}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

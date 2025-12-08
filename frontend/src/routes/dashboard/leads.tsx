@@ -7,6 +7,7 @@ import { CarBrandSelect } from '@/components/ui/car-brand-select';
 import { CarModelSelect } from '@/components/ui/car-model-select';
 import { ExportCountrySelect } from '@/components/ui/export-country-select';
 import { CustomerSelect } from '@/components/ui/customer-select';
+import { LeadTimer } from '@/components/ui/lead-timer';
 import { carBrandsService } from '../../services/carBrandsService';
 import { carModelsService } from '../../services/carModelsService';
 import { customersService, type CreateCustomerData } from '../../services/customersService';
@@ -860,6 +861,16 @@ function LeadsKanbanPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* Lead Timer - Shows time elapsed since creation */}
+                    {lead.status === 'new' && (
+                      <div className="mb-3">
+                        <LeadTimer 
+                          createdAt={lead.createdAt} 
+                          priority={lead.priority}
+                        />
+                      </div>
+                    )}
 
                     {/* Assigned To Badge */}
                     <div className="mb-2">
