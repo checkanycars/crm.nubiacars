@@ -44,6 +44,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Customer routes
     Route::apiResource('customers', CustomerController::class);
+    
+    // Customer document routes
+    Route::get('customers/{customer}/documents', [\App\Http\Controllers\Api\CustomerDocumentController::class, 'index']);
+    Route::post('customers/{customer}/documents', [\App\Http\Controllers\Api\CustomerDocumentController::class, 'store']);
+    Route::get('customers/{customer}/documents/{document}', [\App\Http\Controllers\Api\CustomerDocumentController::class, 'show']);
+    Route::get('customers/{customer}/documents/{document}/download', [\App\Http\Controllers\Api\CustomerDocumentController::class, 'download']);
+    Route::delete('customers/{customer}/documents/{document}', [\App\Http\Controllers\Api\CustomerDocumentController::class, 'destroy']);
 
     // Car database routes
     Route::apiResource('car-brands', CarBrandController::class);

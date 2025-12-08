@@ -6,6 +6,7 @@ import {
   type CreateCustomerData,
   type UpdateCustomerData,
 } from '../../services/customersService';
+import { customerDocumentsService } from '../../services/customerDocumentsService';
 
 // Route definition
 export const Route = createFileRoute('/dashboard/customers')({
@@ -49,7 +50,11 @@ function CustomersPage() {
     phone: '',
     status: 'lead' as 'active' | 'inactive' | 'lead',
     notes: '',
+    documents: [] as File[],
   });
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
 
@@ -102,6 +107,105 @@ function CustomersPage() {
     }));
   };
 
+  const validateFile = (file: File): string | null => {
+    // Check file type
+    if (file.type !== 'application/pdf') {
+      return 'Only PDF files are allowed';
+    }
+    
+    // Check file size (2MB = 2 * 1024 * 1024 bytes)
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return 'File size must be less than 2MB';
+    }
+    
+    return null;
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles: File[] = [];
+    const errors: string[] = [];
+
+    Array.from(files).forEach((file) => {
+      const error = validateFile(file);
+      if (error) {
+        errors.push(`${file.name}: ${error}`);
+      } else {
+        newFiles.push(file);
+      }
+    });
+
+    if (errors.length > 0) {
+      setFileError(errors.join(', '));
+    } else {
+      setFileError(null);
+    }
+
+    if (newFiles.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        documents: [...prev.documents, ...newFiles],
+      }));
+    }
+
+    // Reset input
+    e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles: File[] = [];
+    const errors: string[] = [];
+
+    Array.from(files).forEach((file) => {
+      const error = validateFile(file);
+      if (error) {
+        errors.push(`${file.name}: ${error}`);
+      } else {
+        newFiles.push(file);
+      }
+    });
+
+    if (errors.length > 0) {
+      setFileError(errors.join(', '));
+    } else {
+      setFileError(null);
+    }
+
+    if (newFiles.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        documents: [...prev.documents, ...newFiles],
+      }));
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: prev.documents.filter((_, i) => i !== index),
+    }));
+    setFileError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -116,7 +220,10 @@ function CustomersPage() {
         notes: formData.notes,
       };
 
-      const newCustomer = await customersService.createCustomer(customerData);
+      const newCustomer = await customersService.createCustomer(
+        customerData,
+        formData.documents.length > 0 ? formData.documents : undefined
+      );
       
       // Add to local state
       setCustomers((prev) => [newCustomer, ...prev]);
@@ -128,7 +235,9 @@ function CustomersPage() {
         phone: '',
         status: 'lead',
         notes: '',
+        documents: [],
       });
+      setFileError(null);
       setShowAddModal(false);
       
       // Show success message (you can use a toast notification library)
@@ -142,9 +251,21 @@ function CustomersPage() {
     }
   };
 
-  const handleView = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setShowViewModal(true);
+  const handleView = async (customer: Customer) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      // Fetch full customer details with documents
+      const fullCustomer = await customersService.getCustomer(customer.id);
+      setSelectedCustomer(fullCustomer);
+      setShowViewModal(true);
+    } catch (err: any) {
+      console.error('Error fetching customer details:', err);
+      setError(err.response?.data?.message || 'Failed to fetch customer details');
+      alert('Failed to load customer details');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEdit = (customer: Customer) => {
@@ -155,7 +276,9 @@ function CustomersPage() {
       phone: customer.phone,
       status: customer.status,
       notes: customer.notes || '',
+      documents: [],
     });
+    setFileError(null);
     setShowEditModal(true);
   };
 
@@ -177,7 +300,8 @@ function CustomersPage() {
 
       const updatedCustomer = await customersService.updateCustomer(
         selectedCustomer.id,
-        updateData
+        updateData,
+        formData.documents.length > 0 ? formData.documents : undefined
       );
 
       // Update local state
@@ -231,7 +355,9 @@ function CustomersPage() {
       phone: '',
       status: 'lead',
       notes: '',
+      documents: [],
     });
+    setFileError(null);
   };
 
   return (
@@ -439,6 +565,111 @@ function CustomersPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Documents
+                    </label>
+                    <div
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                        isDragging
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        id="document-upload"
+                        accept=".pdf"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <div className="space-y-2">
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="text-sm text-gray-600">
+                          <label
+                            htmlFor="document-upload"
+                            className="cursor-pointer font-medium text-blue-600 hover:text-blue-500"
+                          >
+                            Upload files
+                          </label>
+                          <span> or drag and drop</span>
+                        </div>
+                        <p className="text-xs text-gray-500">PDF files up to 2MB</p>
+                      </div>
+                    </div>
+
+                    {fileError && (
+                      <div className="mt-2 text-sm text-red-600">{fileError}</div>
+                    )}
+
+                    {formData.documents.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {formData.documents.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                          >
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              <svg
+                                className="h-5 w-5 text-red-600 flex-shrink-0"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              <span className="text-sm text-gray-700 truncate">
+                                {file.name}
+                              </span>
+                              <span className="text-xs text-gray-500 flex-shrink-0">
+                                ({(file.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(index)}
+                              className="ml-2 text-red-600 hover:text-red-800 flex-shrink-0"
+                            >
+                              <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-6 flex justify-end gap-3">
@@ -541,6 +772,111 @@ function CustomersPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Documents
+                    </label>
+                    <div
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                        isDragging
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        id="document-upload-edit"
+                        accept=".pdf"
+                        multiple
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <div className="space-y-2">
+                        <svg
+                          className="mx-auto h-12 w-12 text-gray-400"
+                          stroke="currentColor"
+                          fill="none"
+                          viewBox="0 0 48 48"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="text-sm text-gray-600">
+                          <label
+                            htmlFor="document-upload-edit"
+                            className="cursor-pointer font-medium text-blue-600 hover:text-blue-500"
+                          >
+                            Upload files
+                          </label>
+                          <span> or drag and drop</span>
+                        </div>
+                        <p className="text-xs text-gray-500">PDF files up to 2MB</p>
+                      </div>
+                    </div>
+
+                    {fileError && (
+                      <div className="mt-2 text-sm text-red-600">{fileError}</div>
+                    )}
+
+                    {formData.documents.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {formData.documents.map((file, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                          >
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              <svg
+                                className="h-5 w-5 text-red-600 flex-shrink-0"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              <span className="text-sm text-gray-700 truncate">
+                                {file.name}
+                              </span>
+                              <span className="text-xs text-gray-500 flex-shrink-0">
+                                ({(file.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(index)}
+                              className="ml-2 text-red-600 hover:text-red-800 flex-shrink-0"
+                            >
+                              <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-6 flex justify-end gap-3">
@@ -627,12 +963,127 @@ function CustomersPage() {
                     </p>
                   </div>
                 )}
+
+                {selectedCustomer.documents && selectedCustomer.documents.length > 0 ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Documents ({selectedCustomer.documents.length})
+                    </label>
+                    <div className="space-y-2">
+                      {selectedCustomer.documents.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                        >
+                          <div className="flex items-center space-x-2 flex-1 min-w-0">
+                            <svg
+                              className="h-5 w-5 text-red-600 shrink-0"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            <span className="text-sm text-gray-700 truncate">
+                              {doc.filename}
+                            </span>
+                            <span className="text-xs text-gray-500 shrink-0">
+                              ({doc.formatted_size})
+                            </span>
+                          </div>
+                          <div className="flex gap-2 ml-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await customerDocumentsService.viewDocument(
+                                    selectedCustomer.id,
+                                    doc.id
+                                  );
+                                } catch (error) {
+                                  console.error('Error viewing document:', error);
+                                  alert('Failed to view document');
+                                }
+                              }}
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                              title="View document"
+                            >
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                />
+                              </svg>
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  await customerDocumentsService.downloadDocument(
+                                    selectedCustomer.id,
+                                    doc.id,
+                                    doc.filename
+                                  );
+                                } catch (error) {
+                                  console.error('Error downloading document:', error);
+                                  alert('Failed to download document');
+                                }
+                              }}
+                              className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center gap-1"
+                              title="Download document"
+                            >
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                />
+                              </svg>
+                              Download
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Documents
+                    </label>
+                    <p className="text-sm text-gray-500">No documents uploaded</p>
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={handleCloseModals}
                   className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  disabled={isLoading}
                 >
                   Close
                 </button>
@@ -642,6 +1093,7 @@ function CustomersPage() {
                     handleEdit(selectedCustomer);
                   }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={isLoading}
                 >
                   Edit
                 </button>

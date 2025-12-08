@@ -1,5 +1,19 @@
 import axios from '../lib/axios';
 
+export interface CustomerDocument {
+  id: number;
+  customer_id: number;
+  filename: string;
+  stored_name: string;
+  path: string;
+  size: number;
+  formatted_size: string;
+  mime_type: string;
+  url: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Customer {
   id: number;
   fullName: string;
@@ -7,6 +21,7 @@ export interface Customer {
   phone: string;
   status: 'active' | 'inactive' | 'lead';
   notes?: string;
+  documents?: CustomerDocument[];
   createdAt: string;
   updatedAt?: string;
 }
@@ -62,7 +77,33 @@ export const customersService = {
   /**
    * Create a new customer
    */
-  async createCustomer(data: CreateCustomerData): Promise<Customer> {
+  async createCustomer(data: CreateCustomerData, documents?: File[]): Promise<Customer> {
+    // If documents are provided, use FormData
+    if (documents && documents.length > 0) {
+      const formData = new FormData();
+      formData.append('full_name', data.fullName);
+      formData.append('email', data.email);
+      formData.append('phone', data.phone);
+      formData.append('status', data.status);
+      formData.append('notes', data.notes || '');
+      
+      documents.forEach((file) => {
+        formData.append('documents[]', file);
+      });
+
+      const response = await axios.post<{ message: string; data: Customer }>(
+        '/api/customers',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return response.data.data;
+    }
+
+    // Otherwise use regular JSON
     const response = await axios.post<{ message: string; data: Customer }>('/api/customers', {
       full_name: data.fullName,
       email: data.email,
@@ -76,7 +117,35 @@ export const customersService = {
   /**
    * Update an existing customer
    */
-  async updateCustomer(id: number, data: UpdateCustomerData): Promise<Customer> {
+  async updateCustomer(id: number, data: UpdateCustomerData, documents?: File[]): Promise<Customer> {
+    // If documents are provided, use FormData with POST method and _method override
+    if (documents && documents.length > 0) {
+      const formData = new FormData();
+      formData.append('_method', 'PUT');
+      
+      if (data.fullName) formData.append('full_name', data.fullName);
+      if (data.email) formData.append('email', data.email);
+      if (data.phone) formData.append('phone', data.phone);
+      if (data.status) formData.append('status', data.status);
+      if (data.notes !== undefined) formData.append('notes', data.notes);
+      
+      documents.forEach((file) => {
+        formData.append('documents[]', file);
+      });
+
+      const response = await axios.post<{ message: string; data: Customer }>(
+        `/api/customers/${id}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return response.data.data;
+    }
+
+    // Otherwise use regular JSON with PUT
     const updateData: Record<string, any> = {};
 
     if (data.fullName) updateData.full_name = data.fullName;

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\CustomerStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends Model
 {
@@ -60,5 +61,13 @@ class Customer extends Model
     public function isInactive(): bool
     {
         return $this->status === CustomerStatus::Inactive;
+    }
+
+    /**
+     * Get the documents for the customer.
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(CustomerDocument::class);
     }
 }

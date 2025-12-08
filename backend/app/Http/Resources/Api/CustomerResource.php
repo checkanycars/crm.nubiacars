@@ -21,6 +21,7 @@ class CustomerResource extends JsonResource
             'phone' => $this->phone,
             'status' => $this->status->value,
             'notes' => $this->notes,
+            'documents' => CustomerDocumentResource::collection($this->whenLoaded('documents')),
             'createdAt' => $this->created_at?->toISOString(),
             'updatedAt' => $this->updated_at?->toISOString(),
         ];

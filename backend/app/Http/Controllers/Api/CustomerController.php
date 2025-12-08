@@ -10,6 +10,8 @@ use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -19,6 +21,11 @@ class CustomerController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Customer::query();
+
+        // Optionally load documents
+        if ($request->get('with_documents')) {
+            $query->with('documents');
+        }
 
         // Filter by status
         if ($request->has('status')) {
@@ -52,7 +59,64 @@ class CustomerController extends Controller
      */
     public function store(StoreCustomerRequest $request): JsonResponse
     {
-        $customer = Customer::create($request->validated());
+        \Log::info('CustomerController@store called');
+        \Log::info('Request all data:', $request->all());
+        \Log::info('Request files:', $request->allFiles());
+        \Log::info('Has documents file:', ['has' => $request->hasFile('documents')]);
+        
+        // Create the customer without documents
+        $customerData = $request->except('documents');
+        $customer = Customer::create($customerData);
+        \Log::info('Customer created:', ['id' => $customer->id]);
+
+        // Handle document uploads if present
+        if ($request->hasFile('documents')) {
+            \Log::info('Documents found in request');
+            $documents = $request->file('documents');
+            \Log::info('Document count:', ['count' => count($documents)]);
+            
+            foreach ($documents as $index => $file) {
+                \Log::info("Processing document {$index}", [
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'mime' => $file->getMimeType(),
+                ]);
+                
+                // Generate a unique filename
+                $storedName = Str::uuid() . '.pdf';
+                
+                // Store the file in the customer-documents directory
+                $path = $file->storeAs(
+                    'customer-documents/' . $customer->id,
+                    $storedName,
+                    'local'
+                );
+                
+                \Log::info("File stored", [
+                    'path' => $path,
+                    'stored_name' => $storedName,
+                    'full_path' => storage_path('app/' . $path),
+                    'exists' => file_exists(storage_path('app/' . $path)),
+                ]);
+
+                // Create the document record
+                $document = $customer->documents()->create([
+                    'filename' => $file->getClientOriginalName(),
+                    'stored_name' => $storedName,
+                    'path' => $path,
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                ]);
+                
+                \Log::info('Document record created:', ['id' => $document->id]);
+            }
+        } else {
+            \Log::warning('No documents in request');
+        }
+
+        // Load documents relationship
+        $customer->load('documents');
+        \Log::info('Loaded documents for customer:', ['count' => $customer->documents->count()]);
 
         return response()->json([
             'message' => 'Customer created successfully.',
@@ -65,6 +129,9 @@ class CustomerController extends Controller
      */
     public function show(Customer $customer): JsonResponse
     {
+        // Load documents relationship
+        $customer->load('documents');
+
         return response()->json([
             'data' => new CustomerResource($customer),
         ], 200);
@@ -75,7 +142,36 @@ class CustomerController extends Controller
      */
     public function update(UpdateCustomerRequest $request, Customer $customer): JsonResponse
     {
-        $customer->update($request->validated());
+        // Update the customer without documents
+        $customerData = $request->except('documents');
+        $customer->update($customerData);
+
+        // Handle document uploads if present
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $file) {
+                // Generate a unique filename
+                $storedName = Str::uuid() . '.pdf';
+                
+                // Store the file in the customer-documents directory
+                $path = $file->storeAs(
+                    'customer-documents/' . $customer->id,
+                    $storedName,
+                    'local'
+                );
+
+                // Create the document record
+                $customer->documents()->create([
+                    'filename' => $file->getClientOriginalName(),
+                    'stored_name' => $storedName,
+                    'path' => $path,
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                ]);
+            }
+        }
+
+        // Load documents relationship
+        $customer->load('documents');
 
         return response()->json([
             'message' => 'Customer updated successfully.',
@@ -88,6 +184,14 @@ class CustomerController extends Controller
      */
     public function destroy(Customer $customer): JsonResponse
     {
+        // Delete all associated documents from storage
+        foreach ($customer->documents as $document) {
+            if (Storage::disk('local')->exists($document->path)) {
+                Storage::disk('local')->delete($document->path);
+            }
+        }
+
+        // Delete the customer (documents will be cascade deleted)
         $customer->delete();
 
         return response()->json([

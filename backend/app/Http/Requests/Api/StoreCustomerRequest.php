@@ -29,6 +29,8 @@ class StoreCustomerRequest extends FormRequest
             'phone' => ['required', 'string', 'max:20'],
             'status' => ['required', 'string', Rule::enum(CustomerStatus::class)],
             'notes' => ['nullable', 'string'],
+            'documents' => ['nullable', 'array'],
+            'documents.*' => ['file', 'mimes:pdf', 'max:2048'], // 2MB max per file
         ];
     }
 
@@ -48,6 +50,8 @@ class StoreCustomerRequest extends FormRequest
             'phone.required' => 'Phone number is required.',
             'phone.max' => 'Phone number cannot exceed 20 characters.',
             'status.required' => 'Customer status is required.',
+            'documents.*.mimes' => 'Only PDF files are allowed.',
+            'documents.*.max' => 'Each document must not exceed 2MB.',
         ];
     }
 }
