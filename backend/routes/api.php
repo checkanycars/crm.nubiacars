@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CarTrimController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ExportCountryController;
 use App\Http\Controllers\Api\LeadController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -59,4 +60,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Export countries routes
     Route::apiResource('export-countries', ExportCountryController::class);
+
+    // User management routes (Manager only - authorization checked in controller)
+    Route::get('/users-statistics', [UserController::class, 'statistics']);
+    Route::get('/users-sales-list', [UserController::class, 'salesList']);
+    Route::post('/users-bulk-destroy', [UserController::class, 'bulkDestroy']);
+    Route::apiResource('users', UserController::class);
 });

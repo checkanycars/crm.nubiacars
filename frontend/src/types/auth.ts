@@ -1,15 +1,8 @@
-// User roles matching backend UserRole enum
-export type UserRole = 'manager' | 'sales';
+// Import shared user types
+import type { User, UserRole } from './user';
 
-// User interface matching backend UserResource
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: UserRole;
-  created_at?: string;
-  updated_at?: string;
-}
+// Re-export for backward compatibility
+export type { User, UserRole };
 
 // Login response from backend
 export interface LoginResponse {

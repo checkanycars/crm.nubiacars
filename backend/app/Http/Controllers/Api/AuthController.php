@@ -28,6 +28,10 @@ class AuthController extends Controller
             ]);
         }
 
+        // Update last login timestamp
+        $user->last_login_at = now();
+        $user->save();
+
         // Revoke all existing tokens for the user
         $user->tokens()->delete();
 
