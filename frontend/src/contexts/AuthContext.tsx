@@ -60,6 +60,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       setUser(userData);
       setToken(authToken);
+      return userData; // Return user data for role-based redirects
     } catch (error) {
       setUser(null);
       setToken(null);

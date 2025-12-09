@@ -1,6 +1,7 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../contexts/AuthContext';
+import type { User } from '../types/user';
 
 export const Route = createFileRoute('/')({
   component: LoginPage,
@@ -50,10 +51,14 @@ function LoginPage() {
 
     try {
       // Call the login function from AuthContext
-      await login(formData.email, formData.password);
+      const user = await login(formData.email, formData.password);
 
-      // Navigate to dashboard on successful login
-      navigate({ to: '/dashboard' });
+      // Navigate based on user role
+      if (user && user.role === 'finance') {
+        navigate({ to: '/dashboard/finance' });
+      } else {
+        navigate({ to: '/dashboard' });
+      }
     } catch (err: any) {
       const status = err?.response?.status;
       const respData = err?.response?.data;
@@ -83,7 +88,22 @@ function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      navigate({ to: '/dashboard' });
+      // Get user from localStorage to check role
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const user: User = JSON.parse(userStr);
+          if (user.role === 'finance') {
+            navigate({ to: '/dashboard/finance' });
+          } else {
+            navigate({ to: '/dashboard' });
+          }
+        } catch {
+          navigate({ to: '/dashboard' });
+        }
+      } else {
+        navigate({ to: '/dashboard' });
+      }
     }
   }, [isAuthenticated, authLoading, navigate]);
 
@@ -244,6 +264,9 @@ function LoginPage() {
               </p>
               <p className="text-xs text-blue-700">
                 <strong>Sales 2:</strong> sales2@example.com / password
+              </p>
+              <p className="text-xs text-blue-700">
+                <strong>Finance:</strong> finance@nubiacars.com / password
               </p>
             </div>
           </div>

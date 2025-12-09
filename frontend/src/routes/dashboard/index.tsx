@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, redirect } from '@tanstack/react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -9,6 +9,25 @@ import { PerformanceWidget } from '../../components/dashboard/PerformanceWidget'
 import { CategoryWidget } from '../../components/dashboard/CategoryWidget';
 
 export const Route = createFileRoute('/dashboard/')({
+  beforeLoad: async () => {
+    // Redirect finance users to finance page
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.role === 'finance') {
+          throw redirect({
+            to: '/dashboard/finance',
+          });
+        }
+      } catch (error) {
+        // If it's not a redirect, ignore parsing errors
+        if (error && typeof error === 'object' && 'to' in error) {
+          throw error;
+        }
+      }
+    }
+  },
   component: DashboardIndexPage,
 });
 
@@ -24,6 +43,14 @@ interface DashboardStats {
 function DashboardIndexPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Runtime check: redirect finance users to finance page
+  useEffect(() => {
+    if (user?.role === 'finance') {
+      navigate({ to: '/dashboard/finance', replace: true });
+    }
+  }, [user, navigate]);
+  
   const [stats, setStats] = useState<DashboardStats>({
     totalCustomers: 0,
     activeLeads: 0,
