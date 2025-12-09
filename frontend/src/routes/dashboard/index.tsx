@@ -6,6 +6,7 @@ import { leadsService } from '../../services/leadsService';
 import { customersService } from '../../services/customersService';
 import { SalesLeadsWidget } from '../../components/dashboard/SalesLeadsWidget';
 import { PerformanceWidget } from '../../components/dashboard/PerformanceWidget';
+import { CategoryWidget } from '../../components/dashboard/CategoryWidget';
 
 export const Route = createFileRoute('/dashboard/')({
   component: DashboardIndexPage,
@@ -124,6 +125,9 @@ function DashboardIndexPage() {
 
       {/* Performance Widget - Visible to both sales and managers */}
       <PerformanceWidget />
+
+      {/* Category Widget - Visible to both sales and managers */}
+      <CategoryWidget />
 
       {/* Error Message */}
       {error && (

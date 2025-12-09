@@ -2197,7 +2197,7 @@ function LeadsKanbanPage() {
                   )}
                   <div>
                     <label htmlFor="edit-sellingPrice" className="block text-sm font-medium text-gray-700 mb-1">
-                      Selling Price ($)
+                      Selling Price (AED)
                     </label>
                     <input
                       type="number"
@@ -2213,7 +2213,7 @@ function LeadsKanbanPage() {
                   </div>
                   <div>
                     <label htmlFor="edit-costPrice" className="block text-sm font-medium text-gray-700 mb-1">
-                      Cost Price ($)
+                      Cost Price (AED)
                     </label>
                     <input
                       type="number"

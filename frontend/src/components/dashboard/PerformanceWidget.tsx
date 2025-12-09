@@ -36,7 +36,7 @@ export function PerformanceWidget() {
 
   const getCommissionDetails = () => {
     if (!performance) return '';
-    
+
     const details = [];
     if (performance.commission.base_commission > 0) {
       details.push(`Base: ${formatCurrency(performance.commission.base_commission)}`);
@@ -44,7 +44,7 @@ export function PerformanceWidget() {
     if (performance.commission.bonus_commission > 0) {
       details.push(`Bonus: ${formatCurrency(performance.commission.bonus_commission)}`);
     }
-    
+
     return details.length > 0 ? details.join(' + ') : 'No commission yet';
   };
 
@@ -256,7 +256,7 @@ export function PerformanceWidget() {
         </div>
 
         {/* Total Commission Summary */}
-        <div className="mt-6 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 p-6 text-white">
+        {/*<div className="mt-6 rounded-lg bg-linear-to-r from-blue-600 to-purple-600 p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium opacity-90">Total Earnings</p>
@@ -276,7 +276,7 @@ export function PerformanceWidget() {
               {getCommissionDetails()}
             </div>
           )}
-        </div>
+        </div>*/}
       </div>
     </div>
   );

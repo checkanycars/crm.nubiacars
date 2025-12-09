@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
+    'allowed_origins' => env('APP_ENV') === 'local' ? ['*'] : [
         'http://localhost:3000',
         'http://localhost:3001',
         'http://127.0.0.1:3000',
@@ -31,7 +31,10 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => [
+        'Authorization',
+        'X-Total-Count',
+    ],
 
     'max_age' => 0,
 

@@ -103,6 +103,7 @@ export const usersService = {
     const styles: Record<string, string> = {
       manager: 'bg-purple-100 text-purple-800 border-purple-200',
       sales: 'bg-green-100 text-green-800 border-green-200',
+      finance: 'bg-blue-100 text-blue-800 border-blue-200',
     };
     return styles[role] || 'bg-gray-100 text-gray-800 border-gray-200';
   },

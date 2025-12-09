@@ -98,6 +98,35 @@ export interface PerformanceStatistics {
   };
 }
 
+export interface CategoryStatistics {
+  local_new: number;
+  local_used: number;
+  premium_export: number;
+  regular_export: number;
+  commercial_export: number;
+}
+
+export interface CategoryLimits {
+  local_new: number;
+  local_used: number;
+  premium_export: number;
+  regular_export: number;
+  commercial_export: number;
+}
+
+export interface CategoryLimitData {
+  user_id: number;
+  limits: CategoryLimits;
+}
+
+export interface UserWithLimits {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  limits: CategoryLimits;
+}
+
 export interface CreateLeadData {
   leadName: string;
   customerId: number;
@@ -270,6 +299,45 @@ export const leadsService = {
     const response = await axios.get<{ data: PerformanceStatistics }>('/api/leads-performance', {
       params: userId ? { user_id: userId } : {},
     });
+    return response.data.data;
+  },
+
+  /**
+   * Get category statistics (converted leads only)
+   */
+  async getCategoryStatistics(userId?: number): Promise<{ user_id: number; statistics: CategoryStatistics }> {
+    const response = await axios.get<{ data: { user_id: number; statistics: CategoryStatistics } }>('/api/leads-category-statistics', {
+      params: userId ? { user_id: userId } : {},
+    });
+    return response.data.data;
+  },
+
+  /**
+   * Get category limits for a user
+   */
+  async getCategoryLimits(userId?: number): Promise<CategoryLimitData> {
+    const response = await axios.get<{ data: CategoryLimitData }>('/api/category-limits', {
+      params: userId ? { user_id: userId } : {},
+    });
+    return response.data.data;
+  },
+
+  /**
+   * Update category limits for a user (Manager only)
+   */
+  async updateCategoryLimits(userId: number, limits: CategoryLimits): Promise<CategoryLimitData> {
+    const response = await axios.post<{ data: CategoryLimitData }>('/api/category-limits', {
+      user_id: userId,
+      limits,
+    });
+    return response.data.data;
+  },
+
+  /**
+   * Get all users with their category limits (Manager only)
+   */
+  async getUsersWithLimits(): Promise<UserWithLimits[]> {
+    const response = await axios.get<{ data: UserWithLimits[] }>('/api/category-limits-users');
     return response.data.data;
   },
 };

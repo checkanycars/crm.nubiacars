@@ -185,6 +185,42 @@ class LeadController extends Controller
     }
 
     /**
+     * Get lead statistics by category (converted leads only).
+     */
+    public function categoryStatistics(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userId = $request->get('user_id', $user->id);
+
+        // Only managers can view other users' statistics
+        if ($userId != $user->id && ! $user->isManager()) {
+            return response()->json([
+                'message' => 'Unauthorized to view other user statistics.',
+            ], 403);
+        }
+
+        // Query only converted leads
+        $query = Lead::where('is_active', true)
+            ->where('status', 'converted')
+            ->where('assigned_to', $userId);
+
+        $stats = [
+            'local_new' => (clone $query)->where('category', 'local_new')->count(),
+            'local_used' => (clone $query)->where('category', 'local_used')->count(),
+            'premium_export' => (clone $query)->where('category', 'premium_export')->count(),
+            'regular_export' => (clone $query)->where('category', 'regular_export')->count(),
+            'commercial_export' => (clone $query)->where('category', 'commercial_export')->count(),
+        ];
+
+        return response()->json([
+            'data' => [
+                'user_id' => (int) $userId,
+                'statistics' => $stats,
+            ],
+        ], 200);
+    }
+
+    /**
      * Get performance statistics for sales and managers.
      */
     public function performance(Request $request): JsonResponse
@@ -193,7 +229,7 @@ class LeadController extends Controller
         $userId = $request->get('user_id', $user->id);
 
         // Only managers can view other users' performance
-        if ($userId != $user->id && !$user->isManager()) {
+        if ($userId != $user->id && ! $user->isManager()) {
             return response()->json([
                 'message' => 'Unauthorized to view other user performance.',
             ], 403);
@@ -201,7 +237,7 @@ class LeadController extends Controller
 
         // Get target based on role
         $targetUser = $userId != $user->id ? \App\Models\User::find($userId) : $user;
-        if (!$targetUser) {
+        if (! $targetUser) {
             return response()->json([
                 'message' => 'User not found.',
             ], 404);

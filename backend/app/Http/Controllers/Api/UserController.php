@@ -20,7 +20,7 @@ class UserController extends Controller
     public function index(Request $request): JsonResponse
     {
         // Check if user is manager
-        if (!$request->user()->isManager()) {
+        if (! $request->user()->isManager()) {
             return response()->json([
                 'message' => 'Unauthorized. Manager access required.',
             ], 403);
@@ -62,7 +62,7 @@ class UserController extends Controller
         // Sort by
         $sortBy = $request->input('sort_by', 'created_at');
         $sortOrder = $request->input('sort_order', 'desc');
-        
+
         if (in_array($sortBy, ['name', 'email', 'role', 'created_at', 'last_login_at'])) {
             $query->orderBy($sortBy, $sortOrder);
         }
@@ -88,7 +88,7 @@ class UserController extends Controller
     public function statistics(Request $request): JsonResponse
     {
         // Check if user is manager
-        if (!$request->user()->isManager()) {
+        if (! $request->user()->isManager()) {
             return response()->json([
                 'message' => 'Unauthorized. Manager access required.',
             ], 403);
@@ -97,11 +97,12 @@ class UserController extends Controller
         $totalUsers = User::count();
         $totalManagers = User::where('role', UserRole::Manager)->count();
         $totalSales = User::where('role', UserRole::Sales)->count();
-        
+        $totalFinance = User::where('role', UserRole::Finance)->count();
+
         $activeUsers = User::whereNotNull('last_login_at')
             ->where('last_login_at', '>=', now()->subDays(30))
             ->count();
-        
+
         $inactiveUsers = $totalUsers - $activeUsers;
 
         $recentUsers = User::where('created_at', '>=', now()->subDays(30))->count();
@@ -111,6 +112,7 @@ class UserController extends Controller
                 'total_users' => $totalUsers,
                 'total_managers' => $totalManagers,
                 'total_sales' => $totalSales,
+                'total_finance' => $totalFinance,
                 'active_users' => $activeUsers,
                 'inactive_users' => $inactiveUsers,
                 'recent_users' => $recentUsers,
@@ -124,7 +126,7 @@ class UserController extends Controller
     public function store(StoreUserRequest $request): JsonResponse
     {
         // Check if user is manager
-        if (!$request->user()->isManager()) {
+        if (! $request->user()->isManager()) {
             return response()->json([
                 'message' => 'Unauthorized. Manager access required.',
             ], 403);
@@ -156,7 +158,7 @@ class UserController extends Controller
     public function show(Request $request, User $user): JsonResponse
     {
         // Manager can view any user, sales can only view themselves
-        if (!$request->user()->isManager() && $request->user()->id !== $user->id) {
+        if (! $request->user()->isManager() && $request->user()->id !== $user->id) {
             return response()->json([
                 'message' => 'Unauthorized. You can only view your own profile.',
             ], 403);
@@ -173,7 +175,7 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
         // Check if user is manager
-        if (!$request->user()->isManager()) {
+        if (! $request->user()->isManager()) {
             return response()->json([
                 'message' => 'Unauthorized. Manager access required.',
             ], 403);
@@ -219,7 +221,7 @@ class UserController extends Controller
     public function destroy(Request $request, User $user): JsonResponse
     {
         // Check if user is manager
-        if (!$request->user()->isManager()) {
+        if (! $request->user()->isManager()) {
             return response()->json([
                 'message' => 'Unauthorized. Manager access required.',
             ], 403);
@@ -285,7 +287,7 @@ class UserController extends Controller
     public function bulkDestroy(Request $request): JsonResponse
     {
         // Check if user is manager
-        if (!$request->user()->isManager()) {
+        if (! $request->user()->isManager()) {
             return response()->json([
                 'message' => 'Unauthorized. Manager access required.',
             ], 403);
@@ -297,7 +299,7 @@ class UserController extends Controller
         ]);
 
         $userIds = $request->input('user_ids');
-        
+
         // Remove current user from deletion list
         $userIds = array_filter($userIds, function ($id) use ($request) {
             return $id !== $request->user()->id;
@@ -315,9 +317,9 @@ class UserController extends Controller
             ->pluck('name')
             ->toArray();
 
-        if (!empty($usersWithLeads)) {
+        if (! empty($usersWithLeads)) {
             return response()->json([
-                'message' => 'Cannot delete users with assigned leads: ' . implode(', ', $usersWithLeads),
+                'message' => 'Cannot delete users with assigned leads: '.implode(', ', $usersWithLeads),
             ], 422);
         }
 

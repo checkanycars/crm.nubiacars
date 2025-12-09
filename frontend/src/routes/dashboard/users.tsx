@@ -136,8 +136,9 @@ function UsersPage() {
     setShowAddModal(true);
   };
 
-  const handleEditUser = (user: User) => {
+  const handleEditUser = async (user: User) => {
     setEditingUser(user);
+    
     setFormData({
       name: user.name,
       email: user.email,
@@ -206,8 +207,8 @@ function UsersPage() {
     e.preventDefault();
     if (!editingUser) return;
 
-    setFormErrors({});
     setSubmitting(true);
+    setFormErrors({});
 
     try {
       const updateData: Partial<UserFormData> = {
@@ -217,6 +218,7 @@ function UsersPage() {
         target_price: formData.target_price,
       };
 
+      // Only include password if it's provided
       if (formData.password) {
         updateData.password = formData.password;
         updateData.password_confirmation = formData.password_confirmation;
@@ -316,6 +318,18 @@ function UsersPage() {
                 </div>
               </div>
             </div>
+
+            <div className="rounded-lg bg-white p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+                  <span className="text-2xl">💰</span>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Finance Staff</p>
+                  <p className="text-2xl font-bold text-gray-900">{statistics.total_finance}</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -345,6 +359,7 @@ function UsersPage() {
                 <option value="">All Roles</option>
                 <option value="manager">Manager</option>
                 <option value="sales">Sales</option>
+                <option value="finance">Finance</option>
               </select>
 
               <select
@@ -610,7 +625,7 @@ function UsersPage() {
                   <select
                     value={formData.role}
                     onChange={(e) => {
-                      const newRole = e.target.value as 'manager' | 'sales';
+                      const newRole = e.target.value as 'manager' | 'sales' | 'finance';
                       setFormData({ 
                         ...formData, 
                         role: newRole,
@@ -622,6 +637,7 @@ function UsersPage() {
                   >
                     <option value="sales">Sales</option>
                     <option value="manager">Manager</option>
+                    <option value="finance">Finance</option>
                   </select>
                   {formErrors.role && <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>}
                 </div>
@@ -760,7 +776,7 @@ function UsersPage() {
                   <select
                     value={formData.role}
                     onChange={(e) => {
-                      const newRole = e.target.value as 'manager' | 'sales';
+                      const newRole = e.target.value as 'manager' | 'sales' | 'finance';
                       setFormData({ 
                         ...formData, 
                         role: newRole,
@@ -772,6 +788,7 @@ function UsersPage() {
                   >
                     <option value="sales">Sales</option>
                     <option value="manager">Manager</option>
+                    <option value="finance">Finance</option>
                   </select>
                   {formErrors.role && <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>}
                 </div>

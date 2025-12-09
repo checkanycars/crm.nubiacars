@@ -46,6 +46,11 @@ class Lead extends Model
         'not_converted_reason',
         'assigned_to',
         'is_active',
+        'finance_approved',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
+        'commission_paid',
     ];
 
     /**
@@ -64,6 +69,9 @@ class Lead extends Model
             'selling_price' => 'decimal:2',
             'cost_price' => 'decimal:2',
             'is_active' => 'boolean',
+            'finance_approved' => 'boolean',
+            'commission_paid' => 'boolean',
+            'approved_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -131,5 +139,45 @@ class Lead extends Model
     public function isActive(): bool
     {
         return $this->is_active === true;
+    }
+
+    /**
+     * Get the finance user who approved this lead.
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * Check if lead is approved by finance.
+     */
+    public function isApproved(): bool
+    {
+        return $this->finance_approved === true;
+    }
+
+    /**
+     * Check if lead is rejected by finance.
+     */
+    public function isRejected(): bool
+    {
+        return $this->finance_approved === false;
+    }
+
+    /**
+     * Check if lead is pending finance approval.
+     */
+    public function isPendingApproval(): bool
+    {
+        return $this->finance_approved === null && $this->isConverted();
+    }
+
+    /**
+     * Check if commission has been paid.
+     */
+    public function isCommissionPaid(): bool
+    {
+        return $this->commission_paid === true;
     }
 }

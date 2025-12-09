@@ -43,7 +43,7 @@ class CustomerSeeder extends Seeder
             'email' => 'sarah.w@example.com',
             'phone' => '+1 234-567-8903',
             'status' => CustomerStatus::Lead,
-            'notes' => 'Looking for a family SUV. Budget: $40,000.',
+            'notes' => 'Looking for a family SUV. Budget: AED 40,000.',
         ]);
 
         Customer::factory()->create([

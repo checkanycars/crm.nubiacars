@@ -1,5 +1,5 @@
 // User roles matching backend UserRole enum
-export type UserRole = 'manager' | 'sales';
+export type UserRole = 'manager' | 'sales' | 'finance';
 
 // User status based on activity
 export type UserStatus = 'active' | 'inactive';
@@ -31,6 +31,7 @@ export interface UserStatistics {
   total_users: number;
   total_managers: number;
   total_sales: number;
+  total_finance: number;
   active_users: number;
   inactive_users: number;
   recent_users: number;

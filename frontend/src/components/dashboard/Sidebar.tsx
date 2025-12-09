@@ -5,7 +5,7 @@ interface NavItem {
   name: string;
   path: string;
   icon: string;
-  allowedRoles?: Array<'manager' | 'sales'>;
+  allowedRoles?: Array<'manager' | 'sales' | 'finance'>;
 }
 
 export default function Sidebar() {
@@ -18,6 +18,7 @@ export default function Sidebar() {
     { name: 'Dashboard', path: '/dashboard', icon: '📊', allowedRoles: ['manager', 'sales'] },
     { name: 'Leads', path: '/dashboard/leads', icon: '🎯', allowedRoles: ['manager', 'sales'] },
     { name: 'Customers', path: '/dashboard/customers', icon: '👥', allowedRoles: ['manager'] },
+    { name: 'Finance', path: '/dashboard/finance', icon: '💰', allowedRoles: ['finance', 'manager'] },
     // { name: 'Reports', path: '/dashboard/reports', icon: '📈', allowedRoles: ['manager'] },
     { name: 'User Management', path: '/dashboard/users', icon: '👤', allowedRoles: ['manager'] },
     // { name: 'Settings', path: '/dashboard/settings', icon: '⚙️', allowedRoles: ['manager'] },
@@ -27,7 +28,7 @@ export default function Sidebar() {
   const navigation = allNavigation.filter((item) => {
     if (!item.allowedRoles) return true;
     if (!user?.role) return false;
-    return item.allowedRoles.includes(user.role as 'manager' | 'sales');
+    return item.allowedRoles.includes(user.role as 'manager' | 'sales' | 'finance');
   });
 
   const isActive = (path: string) => {
@@ -43,6 +44,8 @@ export default function Sidebar() {
         return 'bg-purple-600';
       case 'sales':
         return 'bg-green-600';
+      case 'finance':
+        return 'bg-blue-600';
       default:
         return 'bg-gray-600';
     }

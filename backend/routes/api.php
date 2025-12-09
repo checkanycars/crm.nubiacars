@@ -38,15 +38,32 @@ Route::middleware('auth:sanctum')->group(function () {
     // Lead routes
     Route::apiResource('leads', LeadController::class);
     Route::get('/leads-statistics', [LeadController::class, 'statistics']);
+    Route::get('/leads-category-statistics', [LeadController::class, 'categoryStatistics']);
     Route::get('/leads-performance', [LeadController::class, 'performance']);
     Route::post('/leads-bulk-destroy', [LeadController::class, 'bulkDestroy']);
     Route::get('/leads-export', [LeadController::class, 'export']);
     Route::patch('/leads/{lead}/deactivate', [LeadController::class, 'deactivate']);
     Route::patch('/leads/{lead}/activate', [LeadController::class, 'activate']);
 
+    // Finance routes (Finance and Manager roles - authorization via middleware)
+    Route::middleware('finance.access')->group(function () {
+        Route::get('/finance/pending-approvals', [\App\Http\Controllers\Api\FinanceController::class, 'pendingApprovals']);
+        Route::get('/finance/approved-leads', [\App\Http\Controllers\Api\FinanceController::class, 'approvedLeads']);
+        Route::get('/finance/rejected-leads', [\App\Http\Controllers\Api\FinanceController::class, 'rejectedLeads']);
+        Route::get('/finance/statistics', [\App\Http\Controllers\Api\FinanceController::class, 'statistics']);
+        Route::post('/finance/leads/{lead}/approve', [\App\Http\Controllers\Api\FinanceController::class, 'approve']);
+        Route::post('/finance/leads/{lead}/reject', [\App\Http\Controllers\Api\FinanceController::class, 'reject']);
+        Route::patch('/finance/leads/{lead}/mark-commission-paid', [\App\Http\Controllers\Api\FinanceController::class, 'markCommissionPaid']);
+    });
+
+    // Category Limits routes
+    Route::get('/category-limits', [\App\Http\Controllers\Api\CategoryLimitController::class, 'index']);
+    Route::post('/category-limits', [\App\Http\Controllers\Api\CategoryLimitController::class, 'update']);
+    Route::get('/category-limits-users', [\App\Http\Controllers\Api\CategoryLimitController::class, 'listUsers']);
+
     // Customer routes
     Route::apiResource('customers', CustomerController::class);
-    
+
     // Customer document routes
     Route::get('customers/{customer}/documents', [\App\Http\Controllers\Api\CustomerDocumentController::class, 'index']);
     Route::post('customers/{customer}/documents', [\App\Http\Controllers\Api\CustomerDocumentController::class, 'store']);

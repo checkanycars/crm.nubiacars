@@ -68,6 +68,11 @@ class User extends Authenticatable
         return $this->role === UserRole::Sales;
     }
 
+    public function isFinance(): bool
+    {
+        return $this->role === UserRole::Finance;
+    }
+
     public function hasRole(UserRole $role): bool
     {
         return $this->role === $role;
